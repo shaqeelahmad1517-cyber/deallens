@@ -1,0 +1,39 @@
+{
+  "target_name": "Northwind Logistics",
+  "financials": {
+    "revenue": 4200000,
+    "net_income": 520000,
+    "interest": 40000,
+    "taxes": 110000,
+    "depreciation": 90000,
+    "amortization": 20000,
+    "owner_compensation": 180000,
+    "total_assets": 1900000,
+    "total_liabilities": 700000,
+    "fair_value_adjustment": 50000
+  },
+  "adjustments": [
+    {"label": "Owner's vehicle & travel", "amount": 35000, "type": "add_back"},
+    {"label": "One-time legal settlement", "amount": 60000, "type": "add_back"},
+    {"label": "One-off asset sale gain", "amount": 45000, "type": "deduction"}
+  ],
+  "checklist": {
+    "business_type": "smb",
+    "items": [
+      {"id": "fin_statements", "status": "complete", "risk_rating": "low"},
+      {"id": "fin_tax_returns", "status": "complete", "risk_rating": "low"},
+      {"id": "cust_concentration", "status": "flagged", "risk_rating": "high", "notes": "Top customer 38%"},
+      {"id": "ppl_owner_dependence", "status": "flagged", "risk_rating": "medium", "notes": "Owner holds key relationships"}
+    ],
+    "signals": {
+      "top_customer_pct": 38,
+      "owner_dependent": true,
+      "management_team_in_place": false,
+      "revenue_trend": "growing"
+    }
+  },
+  "comparables": {
+    "sector": "logistics",
+    "metric": "sde"
+  }
+}

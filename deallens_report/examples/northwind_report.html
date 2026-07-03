@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valuation Report — Northwind Logistics</title>
+<style>
+  :root { --accent:#1F4E79; --accent2:#2E75B6; --light:#D6E4F0; --grey:#F2F2F2; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#1a1a1a;
+         margin:0; padding:0; background:#fff; line-height:1.5; }
+  .wrap { max-width:820px; margin:0 auto; padding:40px 48px 64px; }
+  header { border-bottom:3px solid var(--accent); padding-bottom:16px; margin-bottom:8px; }
+  .brand { color:var(--accent); font-weight:700; letter-spacing:.5px; font-size:14px; }
+  h1 { font-size:28px; margin:6px 0 2px; color:#111; }
+  .meta { color:#666; font-size:13px; }
+  .hero { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+          border-radius:12px; padding:24px 28px; margin:24px 0; }
+  .hero .label { text-transform:uppercase; letter-spacing:1px; font-size:12px; opacity:.85; }
+  .hero .range { font-size:34px; font-weight:700; margin-top:6px; }
+  .hero .mid { font-size:14px; opacity:.9; margin-top:4px; }
+  .chips { display:flex; gap:12px; flex-wrap:wrap; margin:18px 0 8px; }
+  .chip { background:var(--grey); border-radius:10px; padding:10px 14px; min-width:120px; }
+  .chip .k { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#777; }
+  .chip .v { font-size:17px; font-weight:600; color:var(--accent); }
+  h2 { color:var(--accent2); font-size:18px; margin:28px 0 10px; }
+  h2 .sub, .sub { font-weight:400; font-size:13px; color:#888; }
+  table { width:100%; border-collapse:collapse; margin:6px 0 4px; font-size:14px; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid #e3e3e3; }
+  thead th { background:var(--accent); color:#fff; font-weight:600; }
+  .grid thead th { background:var(--light); color:var(--accent); }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  ul.flags { list-style:none; padding:0; margin:8px 0; }
+  ul.flags li { padding:8px 0; border-bottom:1px solid #eee; }
+  .badge { color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; margin-right:8px; }
+  .cat { display:inline-block; min-width:90px; color:#666; font-size:13px; margin-right:8px; }
+  .note { color:#999; font-size:12px; }
+  footer { margin-top:36px; padding-top:14px; border-top:1px solid #ddd; color:#888; font-size:12px; }
+  @media print { .wrap { padding:0; max-width:none; } .hero { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style></head>
+<body><div class="wrap">
+  <header>
+    <div class="brand">DEALLENS</div>
+    <h1>Valuation Report — Northwind Logistics</h1>
+    <div class="meta">As of June 2026  ·  Prepared by DealLens</div>
+  </header>
+
+  <div class="hero">
+    <div class="label">Recommended Value Range</div>
+    <div class="range">$1,921,022 – $2,618,932</div>
+    <div class="mid">Midpoint $2,269,977</div>
+  </div>
+
+  <div class="chips">
+    <div class="chip"><div class="k">Normalized EBITDA</div><div class="v">$830,000</div></div>
+    <div class="chip"><div class="k">SDE</div><div class="v">$1,010,000</div></div>
+    <div class="chip"><div class="k">Risk multiple cut</div><div class="v">24.0%</div></div>
+    <div class='chip'><div class='k'>Diligence</div><div class='v'>4.9% complete</div></div>
+  </div>
+
+  <h2>Valuation Approaches</h2>
+  <table><thead><tr><th>Approach</th><th style="text-align:right">Result</th></tr></thead>
+  <tbody><tr><td>Income — Discounted Cash Flow</td><td class='num'>$2,534,890</td></tr>
+<tr><td>Income — Capitalization of Earnings</td><td class='num'>$3,458,333</td></tr>
+<tr><td>Market — SDE 1.63×–2.44×</td><td class='num'>$1,642,664 – $2,463,996</td></tr>
+<tr><td>Asset — Net Asset Value</td><td class='num'>$1,250,000</td></tr></tbody></table>
+
+  <h2>Comparables Basis</h2><p>Sector <strong>logistics</strong>, SDE base [2.0, 3.0] → applied <strong>2.14×–3.21×</strong> (size ×1.0, growth ×1.07). <span class='note'>Illustrative reference dataset — replace with proprietary comps for live use.</span></p>
+  <h2>Key Risks <span class='sub'>(diligence red flags)</span></h2><ul class='flags'><li><span class='badge' style='background:#C0392B'>HIGH</span><span class='cat'>Customers</span>Customer concentration: top customer = 38% of revenue</li><li><span class='badge' style='background:#C0392B'>HIGH</span><span class='cat'>People</span>Owner dependence: business relies on the current owner</li></ul>
+  <h2>Sensitivity — DCF vs. Discount Rate</h2><table class='grid'><thead><tr><th>Discount rate</th><th>DCF value</th></tr></thead><tbody><tr><td>24.0%</td><td class='num'>$2,772,423</td></tr>
+<tr><td>25.0%</td><td class='num'>$2,648,441</td></tr>
+<tr><td>26.0%</td><td class='num'>$2,534,890</td></tr>
+<tr><td>27.0%</td><td class='num'>$2,430,515</td></tr>
+<tr><td>28.0%</td><td class='num'>$2,334,253</td></tr></tbody></table>
+
+  <footer>Decision-support only. Outputs are based on user-supplied data and standard methodologies; not financial, legal, or valuation advice.</footer>
+</div></body></html>

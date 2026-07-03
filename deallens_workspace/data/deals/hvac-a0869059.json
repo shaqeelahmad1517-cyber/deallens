@@ -1,0 +1,673 @@
+{
+  "id": "hvac-a0869059",
+  "target_name": "HVAC",
+  "stage": "valuation",
+  "created_at": "2026-06-28T22:28:21+00:00",
+  "updated_at": "2026-06-28T22:28:21+00:00",
+  "financials": {
+    "revenue": 1850000,
+    "net_income": 240000,
+    "owner_compensation": 135000,
+    "interest": 18000,
+    "taxes": 62000,
+    "depreciation": 24000,
+    "amortization": 8000,
+    "total_assets": 620000,
+    "total_liabilities": 180000
+  },
+  "adjustments": [],
+  "checklist": {
+    "business_type": "smb",
+    "items": [],
+    "signals": {
+      "top_customer_pct": 12,
+      "revenue_trend": "growing",
+      "owner_dependent": true
+    }
+  },
+  "comparables": {
+    "sector": "general",
+    "metric": "sde"
+  },
+  "options": {},
+  "last_evaluation": {
+    "engine": "deallens.orchestrator",
+    "version": "1.0.0",
+    "target_name": "HVAC",
+    "steps": {
+      "diligence": {
+        "ok": true
+      },
+      "comparables": {
+        "ok": true
+      },
+      "valuation": {
+        "ok": true
+      }
+    },
+    "warnings": [],
+    "diligence": {
+      "engine": "deallens.diligence",
+      "version": "1.0.0",
+      "target_name": "HVAC",
+      "business_type": "smb",
+      "summary": {
+        "total_items": 31,
+        "completion_pct": 0.0,
+        "overall_risk_score": 0.0,
+        "overall_risk_level": "none",
+        "red_flag_count": 1
+      },
+      "completion_pct": 0.0,
+      "risk_profile": [
+        {
+          "category": "Commercial",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 3,
+          "open_items": 3
+        },
+        {
+          "category": "Customers",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 3,
+          "open_items": 3
+        },
+        {
+          "category": "Deal",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 3,
+          "open_items": 3
+        },
+        {
+          "category": "Financial",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 8,
+          "open_items": 8
+        },
+        {
+          "category": "Legal",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 5,
+          "open_items": 5
+        },
+        {
+          "category": "Operations",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 4,
+          "open_items": 4
+        },
+        {
+          "category": "People",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 3,
+          "open_items": 3
+        },
+        {
+          "category": "Tax",
+          "avg_risk_score": 0.0,
+          "level": "none",
+          "items": 2,
+          "open_items": 2
+        }
+      ],
+      "red_flags": [
+        {
+          "label": "Owner dependence: business relies on the current owner",
+          "severity": "high",
+          "category": "People",
+          "source": "signal",
+          "concern": "owner_dependence"
+        }
+      ],
+      "items": [
+        {
+          "id": "fin_statements",
+          "category": "Financial",
+          "prompt": "Obtain 3-5 years of financial statements",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "fin_tax_returns",
+          "category": "Financial",
+          "prompt": "Cross-check tax returns against the statements",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "fin_quality_earnings",
+          "category": "Financial",
+          "prompt": "Assess quality of earnings (real, recurring, sustainable)",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "fin_normalize",
+          "category": "Financial",
+          "prompt": "Normalize earnings (owner perks, one-offs)",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "fin_ar_ap",
+          "category": "Financial",
+          "prompt": "Review AR aging, AP, and outstanding debts",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "fin_margins",
+          "category": "Financial",
+          "prompt": "Analyze margin trends over time",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "com_market",
+          "category": "Commercial",
+          "prompt": "Assess market size and growth trend",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "com_competition",
+          "category": "Commercial",
+          "prompt": "Map competitive landscape and position",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "com_moat",
+          "category": "Commercial",
+          "prompt": "Identify barriers to entry / competitive advantages",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "cust_concentration",
+          "category": "Customers",
+          "prompt": "Check customer concentration",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "cust_contracts",
+          "category": "Customers",
+          "prompt": "Review customer contracts (terms, renewals, cancellation)",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "cust_retention",
+          "category": "Customers",
+          "prompt": "Review retention / churn history",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ops_processes",
+          "category": "Operations",
+          "prompt": "Understand day-to-day operations and documentation",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ops_suppliers",
+          "category": "Operations",
+          "prompt": "Review key suppliers (contracts, concentration)",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ops_assets",
+          "category": "Operations",
+          "prompt": "Inspect equipment/assets condition and ownership",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ppl_owner_dependence",
+          "category": "People",
+          "prompt": "Assess owner dependence",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ppl_key_staff",
+          "category": "People",
+          "prompt": "Identify key employees and retention risk",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "ppl_contracts",
+          "category": "People",
+          "prompt": "Review employment contracts and comp",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "leg_structure",
+          "category": "Legal",
+          "prompt": "Confirm corporate structure and ownership",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "leg_litigation",
+          "category": "Legal",
+          "prompt": "Check current/pending/threatened litigation",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "leg_licenses",
+          "category": "Legal",
+          "prompt": "Verify licenses, permits, regulatory compliance",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "leg_ip",
+          "category": "Legal",
+          "prompt": "Confirm IP ownership (trademarks, patents, domains)",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "leg_contracts",
+          "category": "Legal",
+          "prompt": "Review contracts for change-of-control clauses",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "tax_filed",
+          "category": "Tax",
+          "prompt": "Confirm all taxes filed and paid",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "tax_audits",
+          "category": "Tax",
+          "prompt": "Check audits, disputes, outstanding liabilities",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "deal_reason",
+          "category": "Deal",
+          "prompt": "Understand the real reason for selling",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "deal_structure",
+          "category": "Deal",
+          "prompt": "Clarify asset vs. share purchase and what's included",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "deal_transition",
+          "category": "Deal",
+          "prompt": "Agree transition/handover plan",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "smb_sde",
+          "category": "Financial",
+          "prompt": "Confirm Seller's Discretionary Earnings (SDE) add-backs",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "smb_personal_expenses",
+          "category": "Financial",
+          "prompt": "Separate personal vs. business expenses",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": false,
+          "notes": "",
+          "evidence": []
+        },
+        {
+          "id": "smb_lease",
+          "category": "Operations",
+          "prompt": "Confirm premises lease is assignable",
+          "status": "not_started",
+          "risk_rating": "none",
+          "critical": true,
+          "notes": "",
+          "evidence": []
+        }
+      ],
+      "disclaimer": "Decision-support only. A structured aid to investigation, not financial, legal, or accounting advice.",
+      "valuation_risk_flags": [
+        {
+          "label": "Owner dependence: business relies on the current owner",
+          "severity": "high",
+          "category": "People"
+        }
+      ]
+    },
+    "comparables": {
+      "engine": "deallens.comparables",
+      "version": "1.0.0",
+      "sector_matched": "general",
+      "metric": "sde",
+      "base_band": [
+        2.0,
+        3.0
+      ],
+      "modifiers": {
+        "size_factor": 1.0,
+        "size_band": "small ($250k-$1M EBITDA)",
+        "growth_factor": 1.07,
+        "growth": "growing",
+        "combined_factor": 1.07
+      },
+      "low_multiple": 2.14,
+      "high_multiple": 3.21,
+      "mid_multiple": 2.675,
+      "notes": "Generic small-business default band.",
+      "source": "Illustrative reference dataset \u2014 replace with proprietary comps for live use.",
+      "valuation_market": {
+        "metric": "sde",
+        "low_multiple": 2.14,
+        "high_multiple": 3.21
+      },
+      "disclaimer": "Decision-support only; illustrative ranges, not a market quote or advice."
+    },
+    "valuation": {
+      "engine": "deallens.valuation",
+      "version": "1.0.0",
+      "target_name": "HVAC",
+      "normalization": {
+        "reported_ebitda": 352000,
+        "adjustments_total": 0,
+        "normalized_ebitda": 352000,
+        "sde": 487000,
+        "revenue": 1850000
+      },
+      "base_free_cash_flow": 228800.0,
+      "effective_discount_rate": 0.23,
+      "risk": {
+        "multiple_discount": 0.12,
+        "discount_rate_premium": 0.03,
+        "multiple_retention": 0.88,
+        "flags": [
+          {
+            "label": "Owner dependence: business relies on the current owner",
+            "severity": "high",
+            "category": "People",
+            "multiple_discount": 0.12,
+            "discount_rate_premium": 0.03
+          }
+        ],
+        "flag_count": 1
+      },
+      "approaches": {
+        "income": {
+          "dcf": {
+            "method": "dcf",
+            "value": 1233412.82,
+            "pv_explicit": 729613.2,
+            "terminal_value": 1418349.93,
+            "pv_terminal": 503799.62,
+            "schedule": [
+              {
+                "year": 1,
+                "fcf": 240240.0,
+                "discount_factor": 0.813008,
+                "pv": 195317.07
+              },
+              {
+                "year": 2,
+                "fcf": 252252.0,
+                "discount_factor": 0.660982,
+                "pv": 166734.09
+              },
+              {
+                "year": 3,
+                "fcf": 264864.6,
+                "discount_factor": 0.537384,
+                "pv": 142333.98
+              },
+              {
+                "year": 4,
+                "fcf": 278107.83,
+                "discount_factor": 0.436897,
+                "pv": 121504.61
+              },
+              {
+                "year": 5,
+                "fcf": 292013.22,
+                "discount_factor": 0.355201,
+                "pv": 103723.45
+              }
+            ]
+          },
+          "capitalization": {
+            "method": "capitalization_of_earnings",
+            "value": 1676190.48,
+            "cap_rate": 0.21,
+            "earnings": 352000
+          },
+          "range": {
+            "low": 1233412.82,
+            "high": 1676190.48,
+            "mid": 1454801.65
+          }
+        },
+        "market": {
+          "method": "market_multiple",
+          "metric": "sde",
+          "metric_value": 487000,
+          "low_multiple": 1.8832,
+          "high_multiple": 2.8248,
+          "low": 917118.4,
+          "high": 1375677.6,
+          "mid": 1146398.0,
+          "risk_multiple_discount": 0.12
+        },
+        "asset": {
+          "method": "net_asset_value",
+          "value": 440000.0,
+          "total_assets": 620000,
+          "total_liabilities": 180000,
+          "fair_value_adjustment": 0.0
+        }
+      },
+      "triangulation": {
+        "weighted_range": {
+          "low": 948212.49,
+          "high": 1308747.23,
+          "mid": 1128479.86
+        },
+        "weighted_mid": 1128479.86,
+        "floor": 440000.0,
+        "ceiling": 1676190.48,
+        "weights_used": {
+          "income": 1.0,
+          "market": 1.0,
+          "asset": 0.5
+        }
+      },
+      "sensitivity": {
+        "discount_rate": [
+          {
+            "discount_rate": 0.21,
+            "dcf_value": 1367066.13
+          },
+          {
+            "discount_rate": 0.22,
+            "dcf_value": 1296869.56
+          },
+          {
+            "discount_rate": 0.23,
+            "dcf_value": 1233412.82
+          },
+          {
+            "discount_rate": 0.24,
+            "dcf_value": 1175774.73
+          },
+          {
+            "discount_rate": 0.25,
+            "dcf_value": 1123194.38
+          }
+        ],
+        "market_multiple": [
+          {
+            "multiple": 1.354,
+            "value": 659398.0
+          },
+          {
+            "multiple": 1.854,
+            "value": 902898.0
+          },
+          {
+            "multiple": 2.354,
+            "value": 1146398.0
+          },
+          {
+            "multiple": 2.854,
+            "value": 1389898.0
+          },
+          {
+            "multiple": 3.354,
+            "value": 1633398.0
+          }
+        ]
+      },
+      "recommended_range": {
+        "low": 948212.49,
+        "high": 1308747.23,
+        "mid": 1128479.86
+      },
+      "disclaimer": "Decision-support only. Outputs are based on user-supplied data and standard methodologies; not financial, legal, or valuation advice."
+    },
+    "recommendation": {
+      "range": {
+        "low": 948212.49,
+        "high": 1308747.23,
+        "mid": 1128479.86
+      },
+      "headline": "Indicative value 948,212-1,308,747 (mid 1,128,480)",
+      "risk_multiple_discount": 0.12,
+      "key_risks": [
+        "Owner dependence: business relies on the current owner"
+      ],
+      "diligence_completion_pct": 0.0
+    },
+    "disclaimer": "Decision-support only. Aggregates user-supplied data through standard methodologies; not financial, legal, or valuation advice."
+  },
+  "reports": [],
+  "notes": "",
+  "history": [
+    {
+      "event": "created",
+      "at": "2026-06-28T22:28:21+00:00"
+    },
+    {
+      "event": "evaluated",
+      "at": "2026-06-28T22:28:21+00:00"
+    }
+  ]
+}

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DealLens</title>
+<style>
+  :root{--accent:#1F4E79;--accent2:#2E75B6;--light:#D6E4F0;--grey:#F4F6F9;--line:#e3e7ee;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a2230;background:#eef1f6;}
+  header{background:var(--accent);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:12px;}
+  header .brand{font-weight:700;letter-spacing:.5px;font-size:18px;}
+  header .tag{opacity:.8;font-size:13px;}
+  .layout{display:flex;min-height:calc(100vh - 52px);}
+  .sidebar{width:320px;background:#fff;border-right:1px solid var(--line);padding:16px;overflow:y;}
+  .main{flex:1;padding:24px 30px;max-width:900px;}
+  button{font:inherit;cursor:pointer;border:none;border-radius:8px;padding:9px 14px;background:var(--accent);color:#fff;font-weight:600;}
+  button.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent);}
+  button.sm{padding:6px 10px;font-size:13px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .deal-card{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:9px;cursor:pointer;transition:.12s;}
+  .deal-card:hover{border-color:var(--accent2);}
+  .deal-card.active{border-color:var(--accent);background:var(--grey);}
+  .deal-card .t{font-weight:600;}
+  .deal-card .m{font-size:12px;color:#667;margin-top:3px;display:flex;justify-content:space-between;}
+  .stage{display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:var(--light);color:var(--accent);padding:2px 7px;border-radius:5px;}
+  h2{color:var(--accent);margin:0 0 4px;}
+  h3{color:var(--accent2);margin:22px 0 8px;font-size:15px;}
+  .muted{color:#778;font-size:13px;}
+  label{display:block;font-size:12px;color:#556;margin:10px 0 3px;font-weight:600;}
+  input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 14px;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .hero{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-radius:12px;padding:20px 24px;margin:14px 0;}
+  .hero .lbl{text-transform:uppercase;letter-spacing:1px;font-size:11px;opacity:.85;}
+  .hero .rng{font-size:30px;font-weight:700;margin-top:5px;}
+  .hero .mid{font-size:13px;opacity:.9;}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
+  th{background:var(--accent);color:#fff;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+  .flag{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .badge{color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;margin-right:8px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
+  .hidden{display:none;}
+  .toast{position:fixed;bottom:18px;right:18px;background:#222;color:#fff;padding:11px 16px;border-radius:8px;font-size:14px;opacity:0;transition:.2s;}
+  .toast.show{opacity:1;}
+</style></head>
+<body>
+<header>
+  <span class="brand">DealLens</span>
+  <span class="tag">Due Diligence &amp; Valuation</span>
+  <span style="flex:1"></span>
+  <span id="whoami" class="tag" style="margin-right:10px"></span>
+  <button class="sm ghost" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4)" onclick="showQuickScreen()">⚡ Quick screen</button>
+  <button id="logoutBtn" class="sm ghost hidden" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4);margin-left:8px" onclick="logout()">Log out</button>
+</header>
+
+<!-- Login gate -->
+<div id="authGate" class="hidden" style="max-width:380px;margin:60px auto;">
+  <div class="card">
+    <h2 id="authTitle">Log in to DealLens</h2>
+    <div class="muted" id="authSub">Sign in to your deals.</div>
+    <div id="nameField" class="hidden"><label>Name</label><input id="au_name"></div>
+    <label>Email</label><input id="au_email" type="email">
+    <label>Password</label><input id="au_pass" type="password">
+    <div id="authErr" style="color:#C0392B;font-size:13px;margin-top:8px;"></div>
+    <div class="row" style="margin-top:16px;">
+      <button id="authBtn" onclick="doAuth()">Log in</button>
+      <button class="ghost" onclick="toggleAuthMode()"><span id="authToggle">Create an account</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="layout hidden">
+  <div class="sidebar">
+    <div class="row" style="justify-content:space-between;margin-bottom:12px;">
+      <strong>Deals</strong>
+      <button class="sm" onclick="showCreate()">+ New deal</button>
+    </div>
+    <div id="dealList"></div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let META = {sectors:[],business_types:[],metrics:[],stages:[]};
+let CURRENT = null;
+
+const money = n => (n==null?'—':'$'+Math.round(n).toLocaleString());
+const xx = n => (n==null?'—':Number(n).toFixed(2)+'×');
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+async function api(method, path, body){
+  const r = await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  const ct = r.headers.get('Content-Type')||'';
+  if(ct.includes('application/json')) return r.json();
+  return r.text();
+}
+
+async function loadMeta(){ META = await api('GET','/api/meta'); }
+
+async function loadDeals(){
+  const env = await api('GET','/api/deals');
+  const list = $('dealList'); list.innerHTML='';
+  const deals = (env.result&&env.result.deals)||[];
+  if(!deals.length){ list.innerHTML='<div class="muted">No deals yet. Create one to start.</div>'; }
+  deals.forEach(d=>{
+    const rng = d.recommended_range ? money(d.recommended_range.low)+'–'+money(d.recommended_range.high) : 'not evaluated';
+    const el = document.createElement('div');
+    el.className='deal-card'+(CURRENT===d.id?' active':'');
+    el.onclick=()=>openDeal(d.id);
+    el.innerHTML=`<div class="t">${d.target_name||'(untitled)'}</div>
+      <div class="m"><span class="stage">${d.stage}</span><span>${rng}</span></div>`;
+    list.appendChild(el);
+  });
+}
+
+function field(label,id,value='',type='text'){
+  return `<div><label>${label}</label><input id="${id}" type="${type}" value="${value}"></div>`;
+}
+function selectField(label,id,opts,val){
+  return `<div><label>${label}</label><select id="${id}">${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;
+}
+
+function showQuickScreen(){
+  CURRENT=null; loadDeals();
+  $('main').innerHTML = `
+  <h2>⚡ Quick screen</h2>
+  <div class="muted">A fast ballpark for triage — just earnings and a sector. Add an asking price for a go/no-go read. (Not a full valuation.)</div>
+  <div class="card" style="margin-top:14px;">
+    <div class="grid3">
+      ${field('Earnings (SDE or EBITDA)','q_earn','','number')}
+      ${selectField('Metric','q_metric',META.metrics,'sde')}
+      ${selectField('Sector','q_sector',META.sectors,'general')}
+      ${selectField('Growth','q_growth',['','growing','flat','declining'],'')}
+      ${field('Top customer % (optional)','q_topcust','','number')}
+      ${field('Asking price (optional)','q_ask','','number')}
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:400;">
+        <input type="checkbox" id="q_ownerdep" style="width:auto"> Owner-dependent</label>
+    </div>
+    <div class="row" style="margin-top:16px;">
+      <button onclick="runQuickScreen()">Screen it</button>
+      <button class="ghost" onclick="$('main').innerHTML='';loadDeals();">Close</button>
+    </div>
+    <div id="q_result"></div>
+  </div>`;
+}
+
+async function runQuickScreen(){
+  const payload={
+    earnings:num('q_earn'), metric:$('q_metric').value, sector:$('q_sector').value,
+    growth:$('q_growth').value || undefined,
+  };
+  const tc=num('q_topcust'); if(tc!==undefined)payload.top_customer_pct=tc;
+  if($('q_ownerdep').checked)payload.owner_dependent=true;
+  const ask=num('q_ask'); if(ask!==undefined)payload.asking_price=ask;
+  const env=await api('POST','/api/quickscreen',payload);
+  const box=$('q_result');
+  if(!env.ok){box.innerHTML=`<div class="muted" style="color:#C0392B;margin-top:12px;">${env.error.message}</div>`;return;}
+  const r=env.result, rr=r.range, b=r.multiple_band_adjusted;
+  let verdict='';
+  if(r.verdict){
+    const c=r.verdict==='below_range'?'#1e8449':r.verdict==='above_range'?'#C0392B':'#2E75B6';
+    verdict=`<div style="margin-top:10px;padding:10px 14px;border-radius:8px;background:${c}18;border:1px solid ${c};">
+      <strong style="color:${c}">${r.verdict.replace('_',' ').toUpperCase()}</strong> — ${r.verdict_note} (${r.vs_midpoint_pct>0?'+':''}${r.vs_midpoint_pct}% vs midpoint)</div>`;
+  }
+  box.innerHTML=`<div class="hero" style="margin-top:16px;">
+      <div class="lbl">Indicative range — ${r.sector} ${r.metric.toUpperCase()}</div>
+      <div class="rng">${money(rr.low)} – ${money(rr.high)}</div>
+      <div class="mid">Midpoint ${money(rr.mid)} · multiple ${b[0]}×–${b[1]}× · risk haircut ${Math.round(r.risk_haircut*100)}%</div>
+    </div>${verdict}
+    <div class="muted" style="margin-top:10px;">${r.disclaimer}</div>`;
+}
+
+function showCreate(){
+  CURRENT=null; loadDeals();
+  $('main').innerHTML = `
+  <h2>New deal</h2>
+  <div class="muted">Enter what you know — only target name and revenue are really needed to start.</div>
+  <div class="card" style="margin-top:14px;background:#f0f6ff;border-color:#bcd6f5;">
+    <label style="margin-top:0;">📄 Auto-fill financials (optional)</label>
+    <div class="muted" style="margin-bottom:6px;">Upload a statement (Excel, CSV, Word, PDF) or paste text below, then let DealLens read the numbers for you to review.</div>
+    <div class="row" style="margin-bottom:8px;gap:8px;">
+      <input type="file" id="f_file" accept=".xlsx,.csv,.tsv,.docx,.pdf,.txt" onchange="extractFile()">
+    </div>
+    <textarea id="f_paste" rows="4" placeholder="…or paste lines here, e.g. Revenue 4,200,000" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font:inherit;font-family:monospace;font-size:13px;"></textarea>
+    <div class="row" style="margin-top:8px;"><button class="sm" onclick="extractPaste()">Extract &amp; fill</button>
+      <span id="f_extract_msg" class="muted"></span></div>
+    <div id="f_integrations" style="margin-top:12px;border-top:1px solid #cfe0f5;padding-top:10px;"></div>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="grid">
+      ${field('Target name','f_name')}
+      ${selectField('Business type','f_btype',META.business_types,'smb')}
+      ${selectField('Sector (comparables)','f_sector',META.sectors,'general')}
+      ${selectField('Valuation metric','f_metric',META.metrics,'sde')}
+    </div>
+    <h3>Financials</h3>
+    <div class="grid3">
+      ${field('Revenue','f_revenue','','number')}
+      ${field('Net income','f_ni','','number')}
+      ${field('Owner compensation','f_owner','','number')}
+      ${field('Interest','f_int','','number')}
+      ${field('Taxes','f_tax','','number')}
+      ${field('Depreciation','f_dep','','number')}
+      ${field('Amortization','f_amort','','number')}
+      ${field('Total assets','f_assets','','number')}
+      ${field('Total liabilities','f_liab','','number')}
+    </div>
+    <h3>Risk signals (optional)</h3>
+    <div class="grid3">
+      ${field('Top customer % of revenue','f_topcust','','number')}
+      ${selectField('Revenue trend','f_trend',['','growing','flat','declining'],'')}
+      <div><label>Owner-dependent?</label>
+        <select id="f_ownerdep"><option value="">—</option><option value="true">Yes</option><option value="false">No</option></select></div>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <button onclick="createDeal(true)">Create &amp; evaluate</button>
+      <button class="ghost" onclick="createDeal(false)">Create only</button>
+      <button class="ghost" onclick="$('main').innerHTML='';loadDeals();">Cancel</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">“Create &amp; evaluate” runs diligence + comparables + valuation right away and shows the value range.</div>
+  </div>`;
+  loadIntegrations();
+}
+
+function num(id){const v=$(id).value.trim();return v===''?undefined:Number(v);}
+
+function _fillFromIngest(env){
+  if(!env.ok){$('f_extract_msg').textContent='Error: '+env.error.message;return;}
+  const f=env.result.financials||{};
+  const map={revenue:'f_revenue',net_income:'f_ni',owner_compensation:'f_owner',interest:'f_int',taxes:'f_tax',depreciation:'f_dep',amortization:'f_amort',total_assets:'f_assets',total_liabilities:'f_liab'};
+  let n=0;
+  for(const [k,id] of Object.entries(map)){ if(f[k]!=null && $(id)){ $(id).value=f[k]; n++; } }
+  const warn=(env.result.warnings||[]).length;
+  $('f_extract_msg').textContent=`Filled ${n} field${n===1?'':'s'}`+(warn?` · ${warn} warning(s) — check Revenue/Net income`:'')+'. Review before creating.';
+}
+
+async function extractPaste(){
+  const text=$('f_paste').value.trim();
+  if(!text){$('f_extract_msg').textContent='Upload a file or paste text first.';return;}
+  $('f_extract_msg').textContent='Extracting…';
+  _fillFromIngest(await api('POST','/api/ingest',{text}));
+}
+
+async function extractFile(){
+  const file=$('f_file').files[0];
+  if(!file)return;
+  $('f_extract_msg').textContent='Reading '+file.name+'…';
+  const buf=await file.arrayBuffer();
+  let bin=''; const bytes=new Uint8Array(buf);
+  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  const b64=btoa(bin);
+  _fillFromIngest(await api('POST','/api/ingest',{filename:file.name, content_b64:b64}));
+}
+
+async function loadIntegrations(){
+  const box=$('f_integrations'); if(!box)return;
+  const env=await api('GET','/api/integrations');
+  if(!env.ok){box.innerHTML='';return;}
+  const provs=env.result.providers.filter(p=>p.configured);
+  box.innerHTML = `<div class="muted" style="margin-bottom:6px;">Or import from your accounting system:</div>` +
+    `<div class="row" style="gap:8px;flex-wrap:wrap;">` + provs.map(p=>
+      p.connected
+        ? `<button class="sm" onclick="importProvider('${p.provider}')">Import from ${p.name}</button>`
+        : `<button class="sm ghost" onclick="connectProvider('${p.provider}')">Connect ${p.name}</button>`
+    ).join('') + `</div><div id="f_int_msg" class="muted" style="margin-top:6px;"></div>`;
+}
+
+async function connectProvider(p){
+  const env=await api('POST','/api/integrations/'+p+'/connect',{});
+  if(!env.ok){$('f_int_msg').textContent=env.error.message;return;}
+  const w=window.open(env.result.authorize_url,'deallens_oauth','width=680,height=760');
+  const handler=(e)=>{ if(e.data==='deallens-connected'){ window.removeEventListener('message',handler); loadIntegrations(); toast('Connected'); } };
+  window.addEventListener('message',handler);
+}
+
+async function importProvider(p){
+  $('f_int_msg').textContent='Importing…';
+  const env=await api('POST','/api/integrations/'+p+'/import',{});
+  if(!env.ok){$('f_int_msg').textContent=env.error.message;return;}
+  _fillFromIngest({ok:true, result:{financials:env.result.financials, warnings:[]}});
+}
+
+async function createDeal(andEvaluate){
+  const fin={}; const map={f_revenue:'revenue',f_ni:'net_income',f_owner:'owner_compensation',f_int:'interest',f_tax:'taxes',f_dep:'depreciation',f_amort:'amortization',f_assets:'total_assets',f_liab:'total_liabilities'};
+  for(const [id,key] of Object.entries(map)){const v=num(id);if(v!==undefined)fin[key]=v;}
+  const signals={};
+  const tc=num('f_topcust'); if(tc!==undefined)signals.top_customer_pct=tc;
+  const trend=$('f_trend').value; if(trend)signals.revenue_trend=trend;
+  const od=$('f_ownerdep').value; if(od)signals.owner_dependent=(od==='true');
+  const deal={
+    target_name:$('f_name').value||'Untitled target',
+    stage:'screening',
+    financials:fin,
+    checklist:{business_type:$('f_btype').value, items:[], signals},
+    comparables:{sector:$('f_sector').value, metric:$('f_metric').value}
+  };
+  const env=await api('POST','/api/deals',deal);
+  if(!env.ok){toast('Error: '+env.error.message);return;}
+  await loadDeals();
+  if(andEvaluate){ toast('Deal created — evaluating…'); evaluate(env.result.id); }
+  else { toast('Deal created'); openDeal(env.result.id); }
+}
+
+async function openDeal(id){
+  CURRENT=id; await loadDeals();
+  const env=await api('GET','/api/deals/'+id);
+  if(!env.ok){toast('Error');return;}
+  const d=env.result;
+  const ev=d.last_evaluation;
+  let body=`<h2>${d.target_name}</h2>
+    <div class="row" style="justify-content:space-between;">
+      <span class="muted">Stage: <span class="stage">${d.stage}</span> · ${d.checklist&&d.checklist.business_type||'—'} · sector ${d.comparables&&d.comparables.sector||'—'}</span>
+      <span class="row">
+        <button class="sm" onclick="evaluate('${id}')">Evaluate</button>
+        <button class="sm ghost" onclick="viewReport('${id}')" ${ev?'':'disabled'}>View report</button>
+        <button class="sm ghost" onclick="delDeal('${id}')">Delete</button>
+      </span>
+    </div>`;
+
+  if(!ev){
+    body+=`<div class="card" style="margin-top:16px;"><div class="muted">Not evaluated yet. Click <strong>Evaluate</strong> to run diligence, comparables, and valuation.</div></div>`;
+  } else {
+    const rr=ev.recommendation.range;
+    body+=`<div class="hero"><div class="lbl">Recommended value range</div>
+      <div class="rng">${money(rr.low)} – ${money(rr.high)}</div>
+      <div class="mid">Midpoint ${money(rr.mid)} · risk multiple cut ${Math.round(ev.recommendation.risk_multiple_discount*100)}%</div></div>`;
+    const ap=ev.valuation.approaches;
+    let rows='';
+    if(ap.income){rows+=`<tr><td>Income — DCF</td><td class="num">${money(ap.income.dcf.value)}</td></tr>`;
+      rows+=`<tr><td>Income — Capitalization</td><td class="num">${money(ap.income.capitalization.value)}</td></tr>`;}
+    if(ap.market){rows+=`<tr><td>Market — ${ap.market.metric.toUpperCase()} ${xx(ap.market.low_multiple)}–${xx(ap.market.high_multiple)}</td><td class="num">${money(ap.market.low)} – ${money(ap.market.high)}</td></tr>`;}
+    if(ap.asset){rows+=`<tr><td>Asset — Net Asset Value</td><td class="num">${money(ap.asset.value)}</td></tr>`;}
+    body+=`<h3>Valuation approaches</h3><table><thead><tr><th>Approach</th><th style="text-align:right">Result</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const flags=(ev.diligence&&ev.diligence.red_flags)||[];
+    if(flags.length){
+      body+=`<h3>Key risks</h3><div>`+flags.map(f=>{
+        const c=f.severity==='high'?'#C0392B':f.severity==='medium'?'#E67E22':'#7F8C8D';
+        return `<div class="flag"><span class="badge" style="background:${c}">${f.severity.toUpperCase()}</span>${f.category}: ${f.label}</div>`;
+      }).join('')+`</div>`;
+    }
+    body+=`<h3>AI summary <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(auto-drafted — review before sharing)</span></h3>
+      <button class="sm ghost" onclick="draftSummary('${id}')">✦ Draft summary</button>
+      <div id="ai_summary" style="margin-top:10px;white-space:pre-wrap;font-size:14px;line-height:1.55;"></div>`;
+    body+=`<div class="row" style="margin-top:18px;">
+      <button class="sm" onclick="genReport('${id}','html')">Save HTML report</button>
+      <button class="sm ghost" onclick="genReport('${id}','docx')">Save Word report</button>
+      <button class="sm ghost" onclick="genReport('${id}','markdown')">Save Markdown</button></div>`;
+  }
+  // --- Collaboration ---
+  const isOwner = (d.my_role==='owner') || (ME && d.owner_id===ME.id) || !d.owner_id;
+  let collab = `<h3>Collaboration <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(${d.my_role||'owner'})</span></h3>`;
+  const shared = d.shared_with||[];
+  if(shared.length){
+    collab += `<div class="muted" style="margin-bottom:6px;">Shared with:</div>`;
+    collab += shared.map(s=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:5px 0;">
+      <span>${s.email} <span class="stage">${s.role}</span></span>
+      ${isOwner?`<button class="sm ghost" onclick="unshareDeal('${id}','${s.user_id}')">Remove</button>`:''}</div>`).join('');
+  }
+  if(isOwner){
+    collab += `<div class="row" style="margin-top:10px;gap:8px;">
+      <input id="share_email" placeholder="teammate@email.com" style="flex:1;min-width:160px;">
+      <select id="share_role" style="width:auto"><option value="viewer">viewer</option><option value="editor">editor</option></select>
+      <button class="sm" onclick="shareDeal('${id}')">Share</button></div>
+      <div id="share_msg" class="muted" style="margin-top:6px;"></div>`;
+  }
+  // Comments
+  collab += `<h3>Comments</h3>`;
+  const comments = d.comments||[];
+  collab += comments.length ? comments.map(c=>`<div style="border-bottom:1px solid var(--line);padding:7px 0;">
+      <div style="font-size:13px;color:#556;"><strong>${c.author||c.user_id||'someone'}</strong> · ${(c.at||'').replace('T',' ').slice(0,16)}</div>
+      <div>${c.text.replace(/</g,'&lt;')}</div></div>`).join('') : `<div class="muted">No comments yet.</div>`;
+  collab += `<div class="row" style="margin-top:10px;gap:8px;">
+      <input id="comment_text" placeholder="Add a comment…" style="flex:1;">
+      <button class="sm" onclick="addComment('${id}')">Post</button></div>`;
+  body += collab;
+
+  $('main').innerHTML=body;
+  window._lastEval = ev;
+}
+
+async function evaluate(id){
+  toast('Evaluating…');
+  const env=await api('POST','/api/deals/'+id+'/evaluate',{});
+  if(!env.ok){toast('Error: '+env.error.message);return;}
+  toast('Evaluated'); openDeal(id);
+}
+async function genReport(id,fmt){
+  const env=await api('POST','/api/deals/'+id+'/report',{format:fmt});
+  if(!env.ok){toast('Error: '+env.error.message);return;}
+  toast('Saved: '+env.result.path);
+}
+function viewReport(id){ window.open('/api/deals/'+id+'/report','_blank'); }
+async function draftSummary(id){
+  const box=$('ai_summary'); box.textContent='Drafting…';
+  if(!window._lastEval){box.textContent='Evaluate the deal first.';return;}
+  const env=await api('POST','/api/assist',{action:'draft_narrative',result:window._lastEval,options:{format:'text'}});
+  if(!env.ok){box.textContent='Error: '+env.error.message;return;}
+  box.textContent=env.result.narrative;
+}
+async function delDeal(id){
+  if(!confirm('Delete this deal?'))return;
+  await api('DELETE','/api/deals/'+id);
+  CURRENT=null; $('main').innerHTML=''; loadDeals(); toast('Deleted');
+}
+async function shareDeal(id){
+  const email=$('share_email').value.trim(), role=$('share_role').value;
+  if(!email){$('share_msg').textContent='Enter an email.';return;}
+  const env=await api('POST','/api/deals/'+id+'/share',{email,role});
+  if(!env.ok){$('share_msg').textContent=env.error.message;return;}
+  toast('Shared with '+email); openDeal(id);
+}
+async function unshareDeal(id,uid){
+  await api('POST','/api/deals/'+id+'/unshare',{target_user_id:uid});
+  toast('Access removed'); openDeal(id);
+}
+async function addComment(id){
+  const text=$('comment_text').value.trim();
+  if(!text)return;
+  const env=await api('POST','/api/deals/'+id+'/comment',{text,author:ME?ME.email:''});
+  if(!env.ok){toast(env.error.message);return;}
+  openDeal(id);
+}
+
+// ---- Auth ----
+let ME = null;
+let AUTH_MODE = 'login';
+
+function toggleAuthMode(){
+  AUTH_MODE = AUTH_MODE==='login' ? 'signup' : 'login';
+  $('authTitle').textContent = AUTH_MODE==='login' ? 'Log in to DealLens' : 'Create your DealLens account';
+  $('authSub').textContent = AUTH_MODE==='login' ? 'Sign in to your deals.' : 'Start evaluating deals in minutes.';
+  $('authBtn').textContent = AUTH_MODE==='login' ? 'Log in' : 'Sign up';
+  $('authToggle').textContent = AUTH_MODE==='login' ? 'Create an account' : 'I already have an account';
+  $('nameField').classList.toggle('hidden', AUTH_MODE==='login');
+  $('authErr').textContent='';
+}
+
+async function doAuth(){
+  $('authErr').textContent='';
+  const path = AUTH_MODE==='login' ? '/api/auth/login' : '/api/auth/signup';
+  const body = {email:$('au_email').value.trim(), password:$('au_pass').value};
+  if(AUTH_MODE==='signup') body.name = $('au_name').value.trim();
+  const env = await api('POST', path, body);
+  if(!env.ok){ $('authErr').textContent = env.error.message; return; }
+  ME = env.result.user;
+  enterApp();
+}
+
+async function logout(){
+  await api('POST','/api/auth/logout',{});
+  ME=null; CURRENT=null;
+  $('app').classList.add('hidden'); $('logoutBtn').classList.add('hidden'); $('whoami').textContent='';
+  $('authGate').classList.remove('hidden');
+}
+
+function showAuthGate(){
+  $('authGate').classList.remove('hidden');
+  $('app').classList.add('hidden');
+  $('logoutBtn').classList.add('hidden');
+}
+
+async function enterApp(){
+  $('authGate').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('logoutBtn').classList.remove('hidden');
+  $('whoami').textContent = ME.email;
+  await loadMeta(); await loadDeals();
+  $('main').innerHTML='<h2>Welcome to DealLens</h2><div class="muted">Select a deal on the left, or create a new one to run a full evaluation.</div>';
+}
+
+(async function init(){
+  const env = await api('GET','/api/auth/me');
+  if(env.ok && env.result.user){ ME = env.result.user; enterApp(); }
+  else { showAuthGate(); }
+})();
+</script>
+</body></html>

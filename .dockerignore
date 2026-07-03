@@ -1,0 +1,14 @@
+# Keep the image small and reproducible.
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/data/
+**/demo_data/
+**/*.db
+deallens_*/examples/*.html
+deallens_*/examples/*.docx
+deallens_*/examples/*.pdf
+deallens_*/examples/*.md
+!deallens_*/examples/*.py
+.git/
+*.egg-info/

@@ -1,0 +1,40 @@
+{
+  "target_name": "Northwind Logistics",
+  "recommendation": {"range": {"low": 1921022, "high": 2618932, "mid": 2269977}},
+  "diligence": {
+    "completion_pct": 9.9,
+    "summary": {"overall_risk_level": "medium", "red_flag_count": 2},
+    "red_flags": [
+      {"label": "Customer concentration: top customer = 38% of revenue", "severity": "high", "category": "Customers"},
+      {"label": "Owner dependence: business relies on the current owner", "severity": "high", "category": "People"}
+    ],
+    "risk_profile": []
+  },
+  "comparables": {
+    "sector_matched": "logistics", "metric": "sde", "base_band": [2.0, 3.0],
+    "low_multiple": 2.14, "high_multiple": 3.21,
+    "modifiers": {"size_factor": 1.0, "growth_factor": 1.07},
+    "source": "Illustrative reference dataset — replace with proprietary comps for live use."
+  },
+  "valuation": {
+    "target_name": "Northwind Logistics",
+    "normalization": {"normalized_ebitda": 830000.0, "sde": 1010000.0, "revenue": 4200000},
+    "effective_discount_rate": 0.26,
+    "risk": {"multiple_discount": 0.24, "flags": []},
+    "approaches": {
+      "income": {"dcf": {"value": 2589041.77}, "capitalization": {"value": 3458333.33}},
+      "market": {"metric": "sde", "low_multiple": 2.49, "high_multiple": 4.15, "low": 2514900.0, "high": 4191500.0},
+      "asset": {"value": 1250000}
+    },
+    "sensitivity": {"discount_rate": [
+      {"discount_rate": 0.245, "dcf_value": 2832774.61},
+      {"discount_rate": 0.255, "dcf_value": 2705548.71},
+      {"discount_rate": 0.265, "dcf_value": 2589041.77},
+      {"discount_rate": 0.275, "dcf_value": 2481963.06},
+      {"discount_rate": 0.285, "dcf_value": 2383220.64}
+    ]},
+    "recommended_range": {"low": 1921022, "high": 2618932, "mid": 2269977},
+    "disclaimer": "Decision-support only. Not financial, legal, or valuation advice."
+  },
+  "disclaimer": "Decision-support only. Not financial, legal, or valuation advice."
+}

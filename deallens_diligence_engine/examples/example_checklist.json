@@ -1,0 +1,27 @@
+{
+  "target_name": "Northwind Logistics",
+  "business_type": "smb",
+  "items": [
+    {"id": "fin_statements", "status": "complete", "risk_rating": "low", "evidence": ["FY21-23 P&L.pdf"]},
+    {"id": "fin_tax_returns", "status": "complete", "risk_rating": "low"},
+    {"id": "fin_quality_earnings", "status": "complete", "risk_rating": "medium", "notes": "Some owner add-backs to verify"},
+    {"id": "fin_normalize", "status": "complete", "risk_rating": "low"},
+    {"id": "cust_concentration", "status": "flagged", "risk_rating": "high", "notes": "Top customer 38% of revenue"},
+    {"id": "cust_contracts", "status": "in_progress", "risk_rating": "medium"},
+    {"id": "ppl_owner_dependence", "status": "flagged", "risk_rating": "medium", "notes": "Owner holds key relationships"},
+    {"id": "leg_litigation", "status": "complete", "risk_rating": "none"},
+    {"id": "tax_filed", "status": "complete", "risk_rating": "none"},
+    {"id": "smb_lease", "status": "in_progress", "risk_rating": "medium", "notes": "Confirming assignability"}
+  ],
+  "signals": {
+    "top_customer_pct": 38,
+    "owner_dependent": true,
+    "management_team_in_place": false,
+    "revenue_trend": "growing",
+    "clean_books": true,
+    "customer_retention_pct": 82,
+    "litigation_pending": false,
+    "contracts_assignable": true,
+    "taxes_current": true
+  }
+}

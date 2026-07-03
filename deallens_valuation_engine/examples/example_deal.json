@@ -1,0 +1,39 @@
+{
+  "target_name": "Northwind Logistics",
+  "financials": {
+    "revenue": 4200000,
+    "net_income": 520000,
+    "interest": 40000,
+    "taxes": 110000,
+    "depreciation": 90000,
+    "amortization": 20000,
+    "owner_compensation": 180000,
+    "total_assets": 1900000,
+    "total_liabilities": 700000,
+    "fair_value_adjustment": 50000
+  },
+  "adjustments": [
+    {"label": "Owner's vehicle & travel", "amount": 35000, "type": "add_back", "rationale": "Personal expenses run through the business"},
+    {"label": "One-time legal settlement", "amount": 60000, "type": "add_back", "rationale": "Non-recurring cost"},
+    {"label": "One-off asset sale gain", "amount": 45000, "type": "deduction", "rationale": "Not part of operations"}
+  ],
+  "risk_flags": [
+    {"label": "Top customer = 38% of revenue", "severity": "high", "category": "Customers"},
+    {"label": "Owner is sole key relationship holder", "severity": "medium", "category": "People"}
+  ],
+  "income": {
+    "discount_rate": 0.22,
+    "growth_rate": 0.06,
+    "terminal_growth": 0.025,
+    "projection_years": 5,
+    "long_term_growth": 0.025,
+    "fcf_conversion": 0.65
+  },
+  "market": {
+    "metric": "sde",
+    "low_multiple": 3.0,
+    "high_multiple": 5.0
+  },
+  "weights": {"income": 1.0, "market": 1.0, "asset": 0.5},
+  "enabled_approaches": ["income", "market", "asset"]
+}
