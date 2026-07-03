@@ -1,0 +1,23 @@
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Databases & local data
+*.db
+**/data/
+**/demo_data/
+
+# Generated report artifacts (examples)
+deallens_report/examples/*.pdf
+deallens_report/examples/*.jpg
+deallens_report/examples/*.docx
+deallens_report/examples/*.html
+deallens_report/examples/*.md
+deallens_report/examples/*.tmp
+deallens_report/examples/.~lock.*#
+
+# OS / editor
+.DS_Store
+*.tmp
