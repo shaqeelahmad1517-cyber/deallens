@@ -52,6 +52,8 @@
   <span style="flex:1"></span>
   <span id="whoami" class="tag" style="margin-right:10px"></span>
   <button class="sm ghost" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4)" onclick="showQuickScreen()">⚡ Quick screen</button>
+  <button class="sm ghost" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4);margin-left:8px" onclick="showBank()">🏦 Bank</button>
+  <button class="sm ghost" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4);margin-left:8px" onclick="showConglomerate()">🏢 Conglomerate</button>
   <button id="logoutBtn" class="sm ghost hidden" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.4);margin-left:8px" onclick="logout()">Log out</button>
 </header>
 
@@ -123,6 +125,107 @@ function field(label,id,value='',type='text'){
 }
 function selectField(label,id,opts,val){
   return `<div><label>${label}</label><select id="${id}">${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;
+}
+
+// ---- Bank valuation ----
+function showBank(){
+  CURRENT=null; loadDeals();
+  $('main').innerHTML = `
+  <h2>🏦 Bank / financial institution</h2>
+  <div class="muted">Banks are valued on <strong>book value (P/B)</strong> and <strong>earnings (P/E)</strong> — not EBITDA, because interest is a bank's revenue, not a cost.</div>
+  <div class="card" style="margin-top:14px;">
+    <div class="grid">
+      ${field('Institution name','b_name')}
+      ${selectField('Institution type','b_type',META.bank_types||['universal_bank'],'universal_bank')}
+      ${field('Net income','b_ni','','number')}
+      ${field('Book value (equity)','b_book','','number')}
+      ${field('Total assets (if no book value)','b_assets','','number')}
+      ${field('Total liabilities (if no book value)','b_liab','','number')}
+    </div>
+    <div class="row" style="margin-top:16px;">
+      <button onclick="runBank()">Value it</button>
+      <button class="ghost" onclick="$('main').innerHTML='';loadDeals();">Close</button>
+    </div>
+    <div id="b_result"></div>
+  </div>`;
+}
+async function runBank(){
+  const p={bank_type:$('b_type').value};
+  const ni=num('b_ni'); if(ni!==undefined)p.net_income=ni;
+  const bk=num('b_book'); if(bk!==undefined)p.book_value=bk;
+  const ta=num('b_assets'); if(ta!==undefined)p.total_assets=ta;
+  const tl=num('b_liab'); if(tl!==undefined)p.total_liabilities=tl;
+  const env=await api('POST','/api/banking',p);
+  const box=$('b_result');
+  if(!env.ok){box.innerHTML=`<div class="muted" style="color:#C0392B;margin-top:12px;">${env.error.message}</div>`;return;}
+  const r=env.result, rr=r.recommended_range;
+  if(!rr){box.innerHTML=`<div class="muted" style="margin-top:12px;">Not enough inputs — provide net income and/or book value.</div>`;return;}
+  let rows='';
+  for(const [k,a] of Object.entries(r.approaches||{})){
+    rows+=`<tr><td>${k.replace(/_/g,' ')} (×${a.multiple[0]}–${a.multiple[1]})</td><td class="num">${money(a.low)} – ${money(a.high)}</td></tr>`;
+  }
+  box.innerHTML=`<div class="hero" style="margin-top:16px;">
+      <div class="lbl">Indicative value — ${(($('b_name').value)||'this institution')} (${r.bank_type.replace(/_/g,' ')})</div>
+      <div class="rng">${money(rr.low)} – ${money(rr.high)}</div>
+      <div class="mid">Midpoint ${money(rr.mid)}${r.roe!=null?' · ROE '+(r.roe*100).toFixed(1)+'%':''}</div></div>
+    <table><thead><tr><th>Method</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="muted" style="margin-top:8px;">${r.method}</div>`;
+}
+
+// ---- Conglomerate (sum-of-the-parts) ----
+let SEGMENTS=[];
+function showConglomerate(){
+  CURRENT=null; loadDeals(); SEGMENTS=[{name:'',sector:'saas',metric:'ebitda',tier:'public',earnings:''}];
+  renderConglomerate();
+}
+function renderConglomerate(){
+  const segHtml=SEGMENTS.map((s,i)=>`<div class="card" style="padding:12px;margin-bottom:8px;background:#fafbfd;">
+    <div class="grid3">
+      ${field('Segment name','cs_name_'+i,s.name)}
+      ${selectField('Sector','cs_sector_'+i,META.sectors||['general'],s.sector)}
+      ${selectField('Metric','cs_metric_'+i,META.metrics||['ebitda'],s.metric)}
+      ${selectField('Tier','cs_tier_'+i,['smb','public'],s.tier)}
+      ${field('Earnings (of that metric)','cs_earn_'+i,s.earnings,'number')}
+      <div style="display:flex;align-items:flex-end;"><button class="sm ghost" onclick="removeSeg(${i})" ${SEGMENTS.length<=1?'disabled':''}>Remove</button></div>
+    </div></div>`).join('');
+  $('main').innerHTML = `
+  <h2>🏢 Conglomerate — sum of the parts</h2>
+  <div class="muted">Value each business segment on its own sector multiple, then combine. (This is how you'd value an Amazon-type company: cloud + retail + ads each priced differently.)</div>
+  <div style="margin-top:14px;">${segHtml}</div>
+  <button class="sm ghost" onclick="addSeg()">+ Add segment</button>
+  <div class="card" style="margin-top:14px;">
+    <div class="grid">
+      ${field('Net debt (cash = negative)','c_netdebt','0','number')}
+      ${field('Conglomerate discount (0–0.5)','c_disc','0.10','number')}
+    </div>
+    <div class="row" style="margin-top:14px;"><button onclick="runConglomerate()">Value it</button>
+      <button class="ghost" onclick="$('main').innerHTML='';loadDeals();">Close</button></div>
+    <div id="c_result"></div>
+  </div>`;
+}
+function _readSegs(){
+  SEGMENTS=SEGMENTS.map((s,i)=>({
+    name:$('cs_name_'+i).value, sector:$('cs_sector_'+i).value, metric:$('cs_metric_'+i).value,
+    tier:$('cs_tier_'+i).value, earnings:$('cs_earn_'+i).value
+  }));
+}
+function addSeg(){ _readSegs(); SEGMENTS.push({name:'',sector:'general',metric:'ebitda',tier:'public',earnings:''}); renderConglomerate(); }
+function removeSeg(i){ _readSegs(); SEGMENTS.splice(i,1); renderConglomerate(); }
+async function runConglomerate(){
+  _readSegs();
+  const segs=SEGMENTS.filter(s=>s.earnings!=='').map(s=>({name:s.name||'Segment',sector:s.sector,metric:s.metric,tier:s.tier,earnings:Number(s.earnings)}));
+  if(!segs.length){$('c_result').innerHTML='<div class="muted" style="margin-top:12px;">Add at least one segment with earnings.</div>';return;}
+  const p={segments:segs, net_debt:Number($('c_netdebt').value||0), conglomerate_discount:Number($('c_disc').value||0)};
+  const env=await api('POST','/api/sotp',p);
+  const box=$('c_result');
+  if(!env.ok){box.innerHTML=`<div class="muted" style="color:#C0392B;margin-top:12px;">${env.error.message}</div>`;return;}
+  const r=env.result, eq=r.equity_range;
+  let rows=r.segments.map(s=>`<tr><td>${s.name} <span class="muted">(${s.sector} ×${s.multiple[0]}–${s.multiple[1]})</span></td><td class="num">${money(s.value_range.low)} – ${money(s.value_range.high)}</td></tr>`).join('');
+  box.innerHTML=`<div class="hero" style="margin-top:16px;">
+      <div class="lbl">Sum-of-the-parts equity value</div>
+      <div class="rng">${money(eq.low)} – ${money(eq.high)}</div>
+      <div class="mid">Midpoint ${money(eq.mid)} · after ${Math.round(r.conglomerate_discount*100)}% discount, net debt ${money(r.net_debt)}</div></div>
+    <table><thead><tr><th>Segment</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function showQuickScreen(){

@@ -32,11 +32,17 @@ def _meta() -> Dict[str, Any]:
         sectors = comparables.available_sectors()
     except Exception:
         sectors = ["general", "logistics", "saas", "retail"]
+    try:
+        import banking
+        bank_types = list(banking.BANK_TYPES.keys())
+    except Exception:
+        bank_types = ["universal_bank", "regional_bank", "investment_bank", "insurance", "general_financial"]
     return {
         "sectors": sectors,
         "business_types": ["general", "smb", "saas", "retail"],
         "metrics": ["sde", "ebitda", "revenue"],
         "stages": list(workspace.STAGES),
+        "bank_types": bank_types,
     }
 
 
@@ -191,6 +197,20 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
         try:
             import assist
             return _wrap(assist.invoke(body))
+        except Exception as exc:
+            return _err(exc)
+
+    if sub == ["banking"] and method == "POST":
+        try:
+            import banking
+            return _wrap(banking.invoke(body))
+        except Exception as exc:
+            return _err(exc)
+
+    if sub == ["sotp"] and method == "POST":
+        try:
+            import sotp
+            return _wrap(sotp.invoke(body))
         except Exception as exc:
             return _err(exc)
 

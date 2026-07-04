@@ -89,6 +89,28 @@ def test_deals_are_isolated_by_user(tmp_path):
 # ---------------------------------------------------------------------------
 # Auth flow via the gateway
 # ---------------------------------------------------------------------------
+def test_banking_route(tmp_path):
+    s, env, _ = handle_api("POST", "/api/banking",
+                           {"bank_type": "universal_bank", "net_income": 12e9, "book_value": 205e9},
+                           _root(tmp_path), user_id=U)
+    assert s == 200 and env["ok"]
+    assert env["result"]["recommended_range"]["low"] > 0
+
+
+def test_sotp_route(tmp_path):
+    s, env, _ = handle_api("POST", "/api/sotp",
+                           {"segments": [{"name": "Cloud", "sector": "saas", "metric": "ebitda",
+                                          "tier": "public", "earnings": 100}]},
+                           _root(tmp_path), user_id=U)
+    assert s == 200 and env["ok"]
+    assert env["result"]["equity_range"]["mid"] > 0
+
+
+def test_meta_has_bank_types(tmp_path):
+    _, payload, _ = handle_api("GET", "/api/meta", None, _root(tmp_path))
+    assert "universal_bank" in payload["bank_types"]
+
+
 def test_auth_signup_login_me(tmp_path, monkeypatch):
     monkeypatch.setenv("DEALLENS_ACCOUNTS", str(tmp_path / "acc"))
     s, env, _ = handle_api("POST", "/api/auth/signup",
