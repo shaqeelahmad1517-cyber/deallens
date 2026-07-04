@@ -69,15 +69,31 @@ def lookup(query: CompQuery, dataset: Optional[List[Dict[str, Any]]] = None) -> 
         )
     rec = index[key]
 
-    band = rec.get(query.metric)
-    if not band:
-        raise ValueError(
-            f"sector {rec['sector']!r} has no {query.metric!r} multiple; "
-            f"try a different metric"
-        )
+    tier = (query.tier or "smb").lower()
+    if tier not in ("smb", "public"):
+        raise ValueError(f"unknown tier {query.tier!r}; use 'smb' or 'public'")
+
+    # Public tier uses stock-market multiple bands (much higher) and does not
+    # apply the small-business size discount (public firms are large by nature).
+    if tier == "public":
+        band = rec.get(f"{query.metric}_public")
+        if not band:
+            raise ValueError(
+                f"sector {rec['sector']!r} has no public {query.metric!r} band; "
+                f"public tier supports 'ebitda' or 'revenue'"
+            )
+        size_factor, size_label = 1.0, "public (size discount not applied)"
+    else:
+        band = rec.get(query.metric)
+        if not band:
+            raise ValueError(
+                f"sector {rec['sector']!r} has no {query.metric!r} multiple; "
+                f"try a different metric"
+            )
+        size_factor, size_label = _size_factor(query.size_ebitda)
+
     base_low, base_high = float(band[0]), float(band[1])
 
-    size_factor, size_label = _size_factor(query.size_ebitda)
     if query.growth and query.growth not in _GROWTH_FACTORS:
         raise ValueError(
             f"unknown growth {query.growth!r}; use high|growing|flat|declining"
@@ -93,6 +109,7 @@ def lookup(query: CompQuery, dataset: Optional[List[Dict[str, Any]]] = None) -> 
         "version": ENGINE_VERSION,
         "sector_matched": rec["sector"],
         "metric": query.metric,
+        "tier": tier,
         "base_band": [round(base_low, 4), round(base_high, 4)],
         "modifiers": {
             "size_factor": round(size_factor, 4),

@@ -93,6 +93,30 @@ def test_valuation_market_adapter_shape():
     assert set(market.keys()) == {"metric", "low_multiple", "high_multiple"}
 
 
+def test_public_tier_uses_higher_bands():
+    smb = lookup(CompQuery(sector="logistics", metric="ebitda"))
+    pub = lookup(CompQuery(sector="logistics", metric="ebitda", tier="public"))
+    assert pub["base_band"] == [10.0, 16.0]
+    assert pub["low_multiple"] > smb["high_multiple"]   # public >> smb
+    assert pub["tier"] == "public"
+
+
+def test_public_tier_skips_size_discount():
+    # A large public firm shouldn't get the small-size discount.
+    pub = lookup(CompQuery(sector="logistics", metric="ebitda", tier="public", size_ebitda=100_000))
+    assert pub["modifiers"]["size_factor"] == 1.0
+
+
+def test_public_tier_requires_public_band():
+    with pytest.raises(ValueError):
+        lookup(CompQuery(sector="logistics", metric="sde", tier="public"))  # no sde_public
+
+
+def test_unknown_tier_errors():
+    with pytest.raises(ValueError):
+        lookup(CompQuery(sector="logistics", metric="ebitda", tier="mega"))
+
+
 def test_market_feeds_valuation_engine():
     valuation = pytest.importorskip("valuation_engine")
     comps = lookup(CompQuery(sector="logistics", metric="sde",

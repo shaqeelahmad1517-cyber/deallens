@@ -136,6 +136,7 @@ function showQuickScreen(){
       ${selectField('Metric','q_metric',META.metrics,'sde')}
       ${selectField('Sector','q_sector',META.sectors,'general')}
       ${selectField('Growth','q_growth',['','growing','flat','declining'],'')}
+      ${selectField('Market tier','q_tier',['smb','public'],'smb')}
       ${field('Top customer % (optional)','q_topcust','','number')}
       ${field('Asking price (optional)','q_ask','','number')}
     </div>
@@ -154,7 +155,7 @@ function showQuickScreen(){
 async function runQuickScreen(){
   const payload={
     earnings:num('q_earn'), metric:$('q_metric').value, sector:$('q_sector').value,
-    growth:$('q_growth').value || undefined,
+    growth:$('q_growth').value || undefined, tier:$('q_tier').value,
   };
   const tc=num('q_topcust'); if(tc!==undefined)payload.top_customer_pct=tc;
   if($('q_ownerdep').checked)payload.owner_dependent=true;
@@ -199,6 +200,7 @@ function showCreate(){
       ${selectField('Business type','f_btype',META.business_types,'smb')}
       ${selectField('Sector (comparables)','f_sector',META.sectors,'general')}
       ${selectField('Valuation metric','f_metric',META.metrics,'sde')}
+      ${selectField('Market tier','f_tier',['smb','public'],'smb')}
     </div>
     <h3>Financials</h3>
     <div class="grid3">
@@ -299,7 +301,7 @@ async function createDeal(andEvaluate){
     stage:'screening',
     financials:fin,
     checklist:{business_type:$('f_btype').value, items:[], signals},
-    comparables:{sector:$('f_sector').value, metric:$('f_metric').value}
+    comparables:{sector:$('f_sector').value, metric:$('f_metric').value, tier:$('f_tier').value}
   };
   const env=await api('POST','/api/deals',deal);
   if(!env.ok){toast('Error: '+env.error.message);return;}

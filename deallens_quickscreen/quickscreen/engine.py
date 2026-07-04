@@ -64,6 +64,7 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
     metric = (payload.get("metric") or "sde").lower()
     sector = payload.get("sector") or "general"
     growth = payload.get("growth", "")
+    tier = (payload.get("tier") or "smb").lower()
 
     import comparables
     comp_env = comparables.invoke({
@@ -71,6 +72,7 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "metric": metric,
         "size_ebitda": payload.get("size_ebitda", earnings if metric in ("sde", "ebitda") else None),
         "growth": growth,
+        "tier": tier,
     })
     if not comp_env["ok"]:
         raise ValueError(f"comparables lookup failed: {comp_env['error']['message']}")

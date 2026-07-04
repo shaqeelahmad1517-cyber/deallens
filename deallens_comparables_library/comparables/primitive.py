@@ -22,6 +22,7 @@ INPUT_SCHEMA: Dict[str, Any] = {
         "metric": {"enum": ["sde", "ebitda", "revenue"]},
         "size_ebitda": {"type": ["number", "null"], "description": "EBITDA used to gauge size premium"},
         "growth": {"enum": ["high", "growing", "flat", "declining", ""]},
+        "tier": {"enum": ["smb", "public"], "description": "smb (private) or public-market multiples"},
     },
 }
 

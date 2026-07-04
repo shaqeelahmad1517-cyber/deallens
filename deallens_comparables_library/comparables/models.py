@@ -12,6 +12,7 @@ class CompQuery:
     metric: str = "sde"               # sde | ebitda | revenue
     size_ebitda: Optional[float] = None   # used to gauge size premium/discount
     growth: str = ""                  # high | growing | flat | declining (or "")
+    tier: str = "smb"                 # smb | public — which calibration to use
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -25,4 +26,5 @@ class CompQuery:
             metric=(d.get("metric", "sde") or "sde").lower(),
             size_ebitda=float(size) if size is not None else None,
             growth=(d.get("growth", "") or "").lower(),
+            tier=(d.get("tier", "smb") or "smb").lower(),
         )
