@@ -63,3 +63,48 @@ def test_discount_out_of_range():
 def test_invoke_ok():
     env = invoke(_two_segments())
     assert env["ok"] and env["result"]["equity_range"]["mid"] > 0
+    assert env["result"]["mode"] == "multiple"
+
+
+# ---------------------------------------------------------------------------
+# Deep mode: full valuation engine per segment
+# ---------------------------------------------------------------------------
+def _deep_payload():
+    return {
+        "mode": "deep",
+        "segments": [
+            {"name": "Cloud",
+             "financials": {"net_income": 30_000_000_000, "depreciation": 8_000_000_000,
+                            "total_assets": 90_000_000_000, "total_liabilities": 20_000_000_000},
+             "comparables": {"sector": "saas", "metric": "ebitda", "tier": "public"}},
+            {"name": "Retail",
+             "financials": {"net_income": 10_000_000_000, "depreciation": 20_000_000_000,
+                            "total_assets": 250_000_000_000, "total_liabilities": 150_000_000_000},
+             "comparables": {"sector": "ecommerce", "metric": "ebitda", "tier": "public"}},
+        ],
+        "conglomerate_discount": 0.10,
+    }
+
+
+def test_deep_mode_runs_full_engine():
+    pytest.importorskip("orchestrator")
+    out = value_sotp(_deep_payload())
+    assert out["mode"] == "deep"
+    # each segment reports the approaches the full engine used
+    for s in out["segments"]:
+        assert s["method"].startswith("deep")
+        assert "income" in s["approaches"] or "market" in s["approaches"]
+        assert s["value_range"]["low"] <= s["value_range"]["high"]
+    assert out["equity_range"]["mid"] > 0
+
+
+def test_deep_mode_requires_financials():
+    pytest.importorskip("orchestrator")
+    env = invoke({"mode": "deep", "segments": [{"name": "X", "comparables": {"sector": "saas"}}]})
+    assert env["ok"] is False
+    assert "financials" in env["error"]["message"]
+
+
+def test_unknown_mode_errors():
+    env = invoke(dict(_two_segments(), mode="quantum"))
+    assert env["ok"] is False and env["error"]["type"] == "ValueError"

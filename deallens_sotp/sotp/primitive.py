@@ -11,6 +11,8 @@ INPUT_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "required": ["segments"],
     "properties": {
+        "mode": {"enum": ["multiple", "deep"],
+                 "description": "multiple = 1 comp per segment; deep = full valuation engine per segment (needs per-segment 'financials')"},
         "segments": {
             "type": "array",
             "items": {

@@ -18,6 +18,57 @@ ENGINE_NAME = "deallens.sotp"
 ENGINE_VERSION = "1.0.0"
 
 
+def _segment_multiple(seg: Dict[str, Any]) -> Dict[str, Any]:
+    """Light path: earnings x a single sector multiple."""
+    import comparables
+    name = seg.get("name", "segment")
+    earnings = float(seg.get("earnings", 0) or 0)
+    env = comparables.invoke({
+        "sector": seg.get("sector", "general"),
+        "metric": seg.get("metric", "ebitda"),
+        "tier": seg.get("tier", "smb"),
+        "growth": seg.get("growth", ""),
+    })
+    if not env["ok"]:
+        raise ValueError(f"segment {name!r}: {env['error']['message']}")
+    c = env["result"]
+    lo, hi = earnings * c["low_multiple"], earnings * c["high_multiple"]
+    return {
+        "name": name, "method": "single multiple",
+        "sector": c["sector_matched"], "metric": c["metric"], "tier": c["tier"],
+        "earnings": round(earnings, 2), "multiple": [c["low_multiple"], c["high_multiple"]],
+        "value_range": {"low": round(lo, 2), "high": round(hi, 2)},
+    }
+
+
+def _segment_deep(seg: Dict[str, Any]) -> Dict[str, Any]:
+    """Deep path: run the FULL valuation pipeline (DCF + multiples + NAV + risk +
+    triangulation) on the segment's own financials, via the orchestrator."""
+    import orchestrator
+    name = seg.get("name", "segment")
+    if not seg.get("financials"):
+        raise ValueError(f"segment {name!r}: deep mode needs a 'financials' block")
+    payload = {"target_name": name, "financials": seg["financials"]}
+    for k in ("adjustments", "checklist", "comparables", "income", "weights",
+              "market", "enabled_approaches"):
+        if seg.get(k) is not None:
+            payload[k] = seg[k]
+    env = orchestrator.invoke(payload)
+    if not env["ok"]:
+        raise ValueError(f"segment {name!r}: {env['error']['message']}")
+    r = env["result"]
+    rng = r["recommendation"]["range"]
+    if rng is None:
+        raise ValueError(f"segment {name!r}: no valuation range (loss-making with no assets)")
+    return {
+        "name": name, "method": "deep (full valuation engine)",
+        "normalized": r["valuation"].get("normalization", {}),
+        "approaches": list(r["valuation"].get("approaches", {}).keys()),
+        "risk_multiple_discount": r["valuation"].get("risk", {}).get("multiple_discount", 0),
+        "value_range": {"low": rng["low"], "high": rng["high"]},
+    }
+
+
 def value_sotp(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise TypeError("payload must be a JSON object (dict)")
@@ -25,41 +76,23 @@ def value_sotp(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not segments:
         raise ValueError("provide at least one segment in 'segments'")
 
+    mode = (payload.get("mode") or "multiple").lower()
+    if mode not in ("multiple", "deep"):
+        raise ValueError("mode must be 'multiple' or 'deep'")
+
     net_debt = float(payload.get("net_debt", 0) or 0)          # +debt, -net cash
     discount = float(payload.get("conglomerate_discount", 0) or 0)
     if not 0 <= discount < 1:
         raise ValueError("conglomerate_discount must be between 0 and 1")
 
-    import comparables
-
     breakdown: List[Dict[str, Any]] = []
     total_low = 0.0
     total_high = 0.0
     for seg in segments:
-        name = seg.get("name", "segment")
-        earnings = float(seg.get("earnings", 0) or 0)
-        env = comparables.invoke({
-            "sector": seg.get("sector", "general"),
-            "metric": seg.get("metric", "ebitda"),
-            "tier": seg.get("tier", "smb"),
-            "growth": seg.get("growth", ""),
-        })
-        if not env["ok"]:
-            raise ValueError(f"segment {name!r}: {env['error']['message']}")
-        c = env["result"]
-        lo = earnings * c["low_multiple"]
-        hi = earnings * c["high_multiple"]
-        total_low += lo
-        total_high += hi
-        breakdown.append({
-            "name": name,
-            "sector": c["sector_matched"],
-            "metric": c["metric"],
-            "tier": c["tier"],
-            "earnings": round(earnings, 2),
-            "multiple": [c["low_multiple"], c["high_multiple"]],
-            "value_range": {"low": round(lo, 2), "high": round(hi, 2)},
-        })
+        b = _segment_deep(seg) if mode == "deep" else _segment_multiple(seg)
+        total_low += b["value_range"]["low"]
+        total_high += b["value_range"]["high"]
+        breakdown.append(b)
 
     # Enterprise value -> apply conglomerate discount -> subtract net debt.
     disc_low = total_low * (1 - discount)
@@ -70,6 +103,7 @@ def value_sotp(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "engine": ENGINE_NAME,
         "version": ENGINE_VERSION,
+        "mode": mode,
         "segments": breakdown,
         "gross_enterprise_range": {"low": round(total_low, 2), "high": round(total_high, 2)},
         "conglomerate_discount": discount,
