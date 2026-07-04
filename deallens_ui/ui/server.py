@@ -92,7 +92,7 @@ def _manifests() -> Dict[str, Any]:
     out = {}
     for mod in ("valuation_engine", "diligence_engine", "comparables", "orchestrator",
                 "report", "workspace", "quickscreen", "documents", "assist", "accounts",
-                "integrations"):
+                "integrations", "banking", "sotp"):
         try:
             out[mod] = __import__(mod).manifest()
         except Exception as exc:  # pragma: no cover

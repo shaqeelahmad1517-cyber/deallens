@@ -20,6 +20,8 @@ _SIBLINGS = (
     "deallens_assist",
     "deallens_accounts",
     "deallens_integrations",
+    "deallens_banking",
+    "deallens_sotp",
 )
 
 

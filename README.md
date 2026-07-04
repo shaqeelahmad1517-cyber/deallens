@@ -28,6 +28,8 @@ returns an `{"ok": bool, "result"|"error": ...}` envelope, plus a self-describin
 | 9 | `deallens_assist/` | `deallens.assist` | Rule-based assist: suggest add-backs (with rationale) + draft the valuation narrative | consumes 8, 4 |
 | 10 | `deallens_accounts/` | `deallens.accounts` | User accounts + sessions (PBKDF2 hashing, stdlib) — powers multi-user auth | secures 6 |
 | 11 | `deallens_integrations/` | `deallens.integrations` | QuickBooks/Xero OAuth + import financials (mock provider for local demos) | feeds 6, 1 |
+| 12 | `deallens_banking/` | `deallens.banking` | Financial-institution valuation on P/B and P/E (not EBITDA) | standalone |
+| 13 | `deallens_sotp/` | `deallens.sotp` | Sum-of-the-parts for conglomerates (per-segment comps + holdco discount) | consumes 3 |
 
 Primitives 1–5 and 7–9 are pure and stateless; **6 and 10 are stateful** (they
 persist to a store). Deals carry an owner, can be **shared** (viewer/editor) with
