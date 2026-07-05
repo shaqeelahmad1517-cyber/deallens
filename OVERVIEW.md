@@ -115,7 +115,8 @@ outputs for an actual decision:
 |-----------|--------|
 | DCF, normalization, triangulation, P/B–P/E, sum-of-the-parts math | **Real** — implemented to standard methodology and unit-tested |
 | Number extraction, risk roll-up, report generation, auth | **Real** — working and hardened |
-| **Comparable multiple bands** (SMB, public, bank P/B, holdco discount) | **Illustrative** — sensible defaults, *not* a live market feed. Every report says so. Replace with vetted comps. |
+| **Comparable multiple bands** — SMB & public | **Research-grounded** (BizBuySell transaction benchmarks Q1'21–Q4'25; NYU Stern/Damodaran EV/EBITDA, Jan 2026) — a sound default, *not* a live feed or deal-specific. Replace with vetted comps for a real transaction. |
+| **Bank P/B–P/E bands, holdco discount** | **Illustrative** — reasonable defaults; refine with sector data. |
 | **Diligence checklist templates** | **Real structure, generic content** — good starting checklists; tailor to the deal |
 | **AI assist** (add-back suggestions, narrative) | **Real but deterministic/rule-based, not an LLM** — a clean seam exists to add a real model later |
 | **QuickBooks/Xero import** | **Real OAuth flow, mock provider by default** — needs your developer credentials to go live |

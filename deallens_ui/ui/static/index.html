@@ -174,24 +174,44 @@ async function runBank(){
 
 // ---- Conglomerate (sum-of-the-parts) ----
 let SEGMENTS=[];
+let CONG_MODE='multiple';
+function _newSeg(){return {name:'',sector:'saas',metric:'ebitda',tier:'public',earnings:'',
+  net_income:'',depreciation:'',interest:'',taxes:'',total_assets:'',total_liabilities:''};}
 function showConglomerate(){
-  CURRENT=null; loadDeals(); SEGMENTS=[{name:'',sector:'saas',metric:'ebitda',tier:'public',earnings:''}];
+  CURRENT=null; loadDeals(); CONG_MODE='multiple'; SEGMENTS=[_newSeg()];
   renderConglomerate();
 }
+function setCongMode(m){ _readSegs(); CONG_MODE=m; renderConglomerate(); }
 function renderConglomerate(){
-  const segHtml=SEGMENTS.map((s,i)=>`<div class="card" style="padding:12px;margin-bottom:8px;background:#fafbfd;">
-    <div class="grid3">
-      ${field('Segment name','cs_name_'+i,s.name)}
+  const deep = CONG_MODE==='deep';
+  const segHtml=SEGMENTS.map((s,i)=>{
+    const comps=`${field('Segment name','cs_name_'+i,s.name)}
       ${selectField('Sector','cs_sector_'+i,META.sectors||['general'],s.sector)}
       ${selectField('Metric','cs_metric_'+i,META.metrics||['ebitda'],s.metric)}
-      ${selectField('Tier','cs_tier_'+i,['smb','public'],s.tier)}
-      ${field('Earnings (of that metric)','cs_earn_'+i,s.earnings,'number')}
-      <div style="display:flex;align-items:flex-end;"><button class="sm ghost" onclick="removeSeg(${i})" ${SEGMENTS.length<=1?'disabled':''}>Remove</button></div>
-    </div></div>`).join('');
+      ${selectField('Tier','cs_tier_'+i,['smb','public'],s.tier)}`;
+    const inner = deep
+      ? `<div class="grid3">${comps}
+          ${field('Net income','cs_ni_'+i,s.net_income,'number')}
+          ${field('Depreciation & amort.','cs_dep_'+i,s.depreciation,'number')}
+          ${field('Interest','cs_int_'+i,s.interest,'number')}
+          ${field('Taxes','cs_tax_'+i,s.taxes,'number')}
+          ${field('Total assets','cs_ta_'+i,s.total_assets,'number')}
+          ${field('Total liabilities','cs_tl_'+i,s.total_liabilities,'number')}</div>`
+      : `<div class="grid3">${comps}
+          ${field('Earnings (of that metric)','cs_earn_'+i,s.earnings,'number')}</div>`;
+    return `<div class="card" style="padding:12px;margin-bottom:8px;background:#fafbfd;">${inner}
+      <div class="row" style="margin-top:6px;"><button class="sm ghost" onclick="removeSeg(${i})" ${SEGMENTS.length<=1?'disabled':''}>Remove segment</button></div></div>`;
+  }).join('');
   $('main').innerHTML = `
   <h2>🏢 Conglomerate — sum of the parts</h2>
-  <div class="muted">Value each business segment on its own sector multiple, then combine. (This is how you'd value an Amazon-type company: cloud + retail + ads each priced differently.)</div>
-  <div style="margin-top:14px;">${segHtml}</div>
+  <div class="muted">Value each business segment on its own basis, then combine. (How you'd value an Amazon-type company: cloud + retail + ads priced differently.)</div>
+  <div class="row" style="margin-top:10px;gap:6px;">
+    <span class="muted">Depth:</span>
+    <button class="sm ${deep?'ghost':''}" onclick="setCongMode('multiple')">Quick (single multiple)</button>
+    <button class="sm ${deep?'':'ghost'}" onclick="setCongMode('deep')">Deep (full engine per segment)</button>
+  </div>
+  <div class="muted" style="margin-top:6px;">${deep?'Deep mode runs DCF + multiples + NAV + triangulation on each segment — enter each segment’s financials.':'Quick mode applies one sector multiple to each segment’s earnings.'}</div>
+  <div style="margin-top:12px;">${segHtml}</div>
   <button class="sm ghost" onclick="addSeg()">+ Add segment</button>
   <div class="card" style="margin-top:14px;">
     <div class="grid">
@@ -204,25 +224,52 @@ function renderConglomerate(){
   </div>`;
 }
 function _readSegs(){
-  SEGMENTS=SEGMENTS.map((s,i)=>({
-    name:$('cs_name_'+i).value, sector:$('cs_sector_'+i).value, metric:$('cs_metric_'+i).value,
-    tier:$('cs_tier_'+i).value, earnings:$('cs_earn_'+i).value
-  }));
+  SEGMENTS=SEGMENTS.map((s,i)=>{
+    if(!$('cs_name_'+i)) return s;
+    const base={...s,name:$('cs_name_'+i).value,sector:$('cs_sector_'+i).value,
+      metric:$('cs_metric_'+i).value,tier:$('cs_tier_'+i).value};
+    if(CONG_MODE==='deep'){
+      return {...base,net_income:$('cs_ni_'+i).value,depreciation:$('cs_dep_'+i).value,
+        interest:$('cs_int_'+i).value,taxes:$('cs_tax_'+i).value,
+        total_assets:$('cs_ta_'+i).value,total_liabilities:$('cs_tl_'+i).value};
+    }
+    return {...base,earnings:$('cs_earn_'+i).value};
+  });
 }
-function addSeg(){ _readSegs(); SEGMENTS.push({name:'',sector:'general',metric:'ebitda',tier:'public',earnings:''}); renderConglomerate(); }
+function addSeg(){ _readSegs(); SEGMENTS.push(_newSeg()); renderConglomerate(); }
 function removeSeg(i){ _readSegs(); SEGMENTS.splice(i,1); renderConglomerate(); }
+function _fin(s){
+  const f={}; const map={net_income:'net_income',depreciation:'depreciation',interest:'interest',
+    taxes:'taxes',total_assets:'total_assets',total_liabilities:'total_liabilities'};
+  for(const k of Object.keys(map)){ if(s[k]!==''&&s[k]!=null) f[k]=Number(s[k]); }
+  return f;
+}
 async function runConglomerate(){
   _readSegs();
-  const segs=SEGMENTS.filter(s=>s.earnings!=='').map(s=>({name:s.name||'Segment',sector:s.sector,metric:s.metric,tier:s.tier,earnings:Number(s.earnings)}));
-  if(!segs.length){$('c_result').innerHTML='<div class="muted" style="margin-top:12px;">Add at least one segment with earnings.</div>';return;}
-  const p={segments:segs, net_debt:Number($('c_netdebt').value||0), conglomerate_discount:Number($('c_disc').value||0)};
+  let segs, p;
+  if(CONG_MODE==='deep'){
+    segs=SEGMENTS.filter(s=>s.net_income!=='').map(s=>({name:s.name||'Segment',
+      financials:_fin(s), comparables:{sector:s.sector,metric:s.metric,tier:s.tier}}));
+    if(!segs.length){$('c_result').innerHTML='<div class="muted" style="margin-top:12px;">Add at least one segment with net income.</div>';return;}
+    p={mode:'deep',segments:segs};
+  } else {
+    segs=SEGMENTS.filter(s=>s.earnings!=='').map(s=>({name:s.name||'Segment',
+      sector:s.sector,metric:s.metric,tier:s.tier,earnings:Number(s.earnings)}));
+    if(!segs.length){$('c_result').innerHTML='<div class="muted" style="margin-top:12px;">Add at least one segment with earnings.</div>';return;}
+    p={segments:segs};
+  }
+  p.net_debt=Number($('c_netdebt').value||0); p.conglomerate_discount=Number($('c_disc').value||0);
+  $('c_result').innerHTML='<div class="muted" style="margin-top:12px;">Valuing…</div>';
   const env=await api('POST','/api/sotp',p);
   const box=$('c_result');
   if(!env.ok){box.innerHTML=`<div class="muted" style="color:#C0392B;margin-top:12px;">${env.error.message}</div>`;return;}
   const r=env.result, eq=r.equity_range;
-  let rows=r.segments.map(s=>`<tr><td>${s.name} <span class="muted">(${s.sector} ×${s.multiple[0]}–${s.multiple[1]})</span></td><td class="num">${money(s.value_range.low)} – ${money(s.value_range.high)}</td></tr>`).join('');
+  let rows=r.segments.map(s=>{
+    const meta = s.multiple ? `${s.sector} ×${s.multiple[0]}–${s.multiple[1]}` : `deep: ${(s.approaches||[]).join('+')}`;
+    return `<tr><td>${s.name} <span class="muted">(${meta})</span></td><td class="num">${money(s.value_range.low)} – ${money(s.value_range.high)}</td></tr>`;
+  }).join('');
   box.innerHTML=`<div class="hero" style="margin-top:16px;">
-      <div class="lbl">Sum-of-the-parts equity value</div>
+      <div class="lbl">Sum-of-the-parts equity value <span style="opacity:.8">· ${r.mode} mode</span></div>
       <div class="rng">${money(eq.low)} – ${money(eq.high)}</div>
       <div class="mid">Midpoint ${money(eq.mid)} · after ${Math.round(r.conglomerate_discount*100)}% discount, net debt ${money(r.net_debt)}</div></div>
     <table><thead><tr><th>Segment</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -388,7 +435,8 @@ async function connectProvider(p){
 async function importProvider(p){
   $('f_int_msg').textContent='Importing…';
   const env=await api('POST','/api/integrations/'+p+'/import',{});
-  if(!env.ok){$('f_int_msg').textContent=env.error.message;return;}
+  if(!env.ok){$('f_int_msg').textContent='Import failed: '+env.error.message;return;}
+  $('f_int_msg').textContent='✓ Imported from '+p+' — review the figures below before creating.';
   _fillFromIngest({ok:true, result:{financials:env.result.financials, warnings:[]}});
 }
 

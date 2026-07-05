@@ -16,17 +16,17 @@ def _two_segments():
 
 def test_sums_segments():
     out = value_sotp(_two_segments())
-    # saas public ebitda 20-40, retail public ebitda 6-10
-    # cloud: 100*20..40 = 2000..4000 ; retail: 200*6..10 = 1200..2000
-    assert out["gross_enterprise_range"]["low"] == 2000 + 1200
-    assert out["gross_enterprise_range"]["high"] == 4000 + 2000
+    # saas public ebitda 15-35, retail public ebitda 6-10
+    # cloud: 100*15..35 = 1500..3500 ; retail: 200*6..10 = 1200..2000
+    assert out["gross_enterprise_range"]["low"] == 1500 + 1200
+    assert out["gross_enterprise_range"]["high"] == 3500 + 2000
     assert len(out["segments"]) == 2
 
 
 def test_conglomerate_discount_and_net_debt():
     payload = dict(_two_segments(), conglomerate_discount=0.10, net_debt=500)
     out = value_sotp(payload)
-    gl, gh = 3200, 6000
+    gl, gh = 2700, 5500
     assert out["equity_range"]["low"] == pytest.approx(gl * 0.9 - 500)
     assert out["equity_range"]["high"] == pytest.approx(gh * 0.9 - 500)
 
@@ -34,7 +34,7 @@ def test_conglomerate_discount_and_net_debt():
 def test_net_cash_increases_value():
     payload = dict(_two_segments(), net_debt=-1000)   # net cash
     out = value_sotp(payload)
-    assert out["equity_range"]["low"] == 3200 + 1000
+    assert out["equity_range"]["low"] == 2700 + 1000
 
 
 def test_per_segment_breakdown():

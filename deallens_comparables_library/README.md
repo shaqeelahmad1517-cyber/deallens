@@ -113,6 +113,26 @@ python3 examples/run_full_pipeline.py    # diligence + comps -> valuation, end t
 > The interlock test/demo import `valuation_engine` and `diligence_engine` from
 > the sibling folders. Keep all three `deallens_*` folders side by side.
 
+## Sources (reviewed 2026-07)
+
+The bands are grounded in published benchmark data, not invented:
+
+- **SMB (private) multiples** — BizBuySell transaction benchmarks (businesses
+  actually sold, Q1 2021 – Q4 2025). Overall SDE multiple averages ~2.57×
+  (range ~2.0–3.3×); revenue ~0.67×. Sector examples used: HVAC/home services
+  ~2.6–3.0× SDE, landscaping ~1.8–3.1×, restaurants ~1.5–3.0×, construction
+  ~2.9×, software/SaaS SDE avg ~3.4×.
+- **Public (stock-market) EV/EBITDA** — NYU Stern / Damodaran industry data
+  (Jan 2026) and industry aggregators. Public multiples run materially higher
+  than private (commonly 30–50%+, far more for high-growth software; e.g. public
+  SaaS ~15–35× EBITDA, healthcare services ~9–15×, manufacturing ~7–12×).
+
+These are **researched aggregate ranges**, not deal-specific or a live feed —
+a sound default. For a real transaction, replace the target's sector band with
+vetted comps for that specific company. Reference pages:
+bizbuysell.com/learning-center/industry-valuation-multiples,
+pages.stern.nyu.edu/~adamodar (vebitda dataset).
+
 ## Boundaries
 
 Decision-support only — illustrative ranges, not a market quote or financial
