@@ -90,14 +90,69 @@ def _qb_rows(report: Dict[str, Any]) -> List[List[str]]:
     return rows
 
 
+def _num(v):
+    if documents is not None:
+        return documents.parse_number(v)
+    try:
+        return float(str(v).replace(",", "").replace("$", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def _qb_groups(report: Dict[str, Any]) -> Dict[str, str]:
+    """Collect QuickBooks summary rows keyed by their authoritative ``group``
+    attribute (Income, NetIncome, TotalAssets, ...) — reliable, unlike labels."""
+    out: Dict[str, str] = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            grp = node.get("group")
+            summ = node.get("Summary")
+            if grp and isinstance(summ, dict) and "ColData" in summ:
+                cols = summ["ColData"]
+                if len(cols) > 1:
+                    out[grp] = cols[-1].get("value", "")
+            for key in ("Rows", "Row"):
+                if key in node:
+                    walk(node[key])
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(report.get("Rows", report))
+    return out
+
+
+# QuickBooks report 'group' attributes -> our fields (authoritative section totals).
+_QB_GROUPS = {
+    "Income": "revenue", "TotalIncome": "revenue",
+    "NetIncome": "net_income",
+    "TotalAssets": "total_assets",
+    "TotalLiabilities": "total_liabilities",
+}
+
+
 def fetch_quickbooks(conn: Dict[str, Any], transport: Transport = urllib_transport) -> Dict[str, Any]:
     base = providers.api_base("quickbooks")
     realm = conn.get("realm_id", "")
     headers = {"Authorization": f"Bearer {conn.get('access_token','')}", "Accept": "application/json"}
     pl = transport("GET", f"{base}/v3/company/{realm}/reports/ProfitAndLoss", headers, None)
     bs = transport("GET", f"{base}/v3/company/{realm}/reports/BalanceSheet", headers, None)
-    rows = _qb_rows(pl) + _qb_rows(bs)
-    return _match_rows(rows)
+
+    fin: Dict[str, Any] = {}
+    all_pairs = []
+    for report in (pl, bs):
+        groups = _qb_groups(report)
+        for grp, field in _QB_GROUPS.items():
+            if field not in fin and grp in groups:
+                v = _num(groups[grp])
+                if v is not None:
+                    fin[field] = v
+        all_pairs += _qb_rows(report)
+    # Fill remaining fields (interest, taxes, depreciation) via label matching.
+    for field, val in _match_rows(all_pairs).items():
+        fin.setdefault(field, val)
+    return fin
 
 
 # --- Xero -------------------------------------------------------------------

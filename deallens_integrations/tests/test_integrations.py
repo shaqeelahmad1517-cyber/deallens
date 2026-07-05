@@ -123,6 +123,27 @@ def test_quickbooks_mapper():
     assert fin.get("net_income") == 520_000
 
 
+def test_quickbooks_group_based_mapping():
+    """Real QB reports tag totals with a 'group' attribute; use it, and don't get
+    fooled by detail lines (e.g. an account literally named 'Depreciation')."""
+    from integrations.client import fetch_quickbooks
+    pl = {"Rows": {"Row": [
+        {"group": "Income", "Summary": {"ColData": [{"value": "Total Income"}, {"value": "4200000"}]}},
+        {"ColData": [{"value": "Sales of Product Income"}, {"value": "999"}]},   # decoy detail
+        {"group": "NetIncome", "Summary": {"ColData": [{"value": "Net Income"}, {"value": "520000"}]}},
+    ]}}
+    bs = {"Rows": {"Row": [
+        {"group": "TotalAssets", "Summary": {"ColData": [{"value": "TOTAL ASSETS"}, {"value": "1900000"}]}},
+        {"group": "TotalLiabilities", "Summary": {"ColData": [{"value": "Total Liabilities"}, {"value": "700000"}]}},
+    ]}}
+    fin = fetch_quickbooks({"realm_id": "1"},
+                           transport=lambda m, u, h, d: pl if "ProfitAndLoss" in u else bs)
+    assert fin["revenue"] == 4_200_000
+    assert fin["net_income"] == 520_000
+    assert fin["total_assets"] == 1_900_000
+    assert fin["total_liabilities"] == 700_000        # assets > liabilities, sane
+
+
 def test_xero_mapper():
     rep = {"Reports": [{"Rows": [
         {"Rows": [{"Cells": [{"Value": "Total Income"}, {"Value": "4200000"}]},
