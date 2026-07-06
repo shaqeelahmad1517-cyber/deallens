@@ -118,7 +118,35 @@ def _sections(result: Dict[str, Any]) -> Dict[str, Any]:
         "risk_discount": risk.get("multiple_discount", 0),
         "approaches": approach_lines, "risks": risks,
         "completion": d["diligence"].get("completion_pct"),
+        "overall_risk": d["diligence"].get("overall_risk_level"),
+        "risk_profile": d["diligence"].get("risk_profile", []),
     }
+
+
+def _diligence_lines(s: Dict[str, Any]) -> List[str]:
+    """Plain-English summary of how far diligence has gone and where concerns are."""
+    lines: List[str] = []
+    comp = s.get("completion")
+    if comp is not None:
+        if comp <= 0:
+            lines.append("The due-diligence checklist hasn't been filled in yet, so this is a "
+                         "<em>preliminary</em> valuation — it reflects the financials but not a "
+                         "verified investigation of the business. Working through the checklist "
+                         "will make it far more reliable.")
+        elif comp < 60:
+            lines.append(f"About {comp:.0f}% of the due-diligence checklist is done. A lot is "
+                         "still unchecked — and unknowns are themselves a risk. Verify more "
+                         "before leaning on this number.")
+        else:
+            lines.append(f"About {comp:.0f}% of the due-diligence checklist is complete — a "
+                         "reasonably thorough look. Still confirm the critical items marked ★.")
+    prof = [p for p in (s.get("risk_profile") or []) if p.get("level") not in (None, "none")]
+    if prof:
+        order = {"high": 3, "medium": 2, "low": 1}
+        prof.sort(key=lambda p: -order.get(p.get("level"), 0))
+        parts = "; ".join(f"{p['category']} ({p['level']} concern)" for p in prof)
+        lines.append(f"Where concerns showed up by area: {parts}.")
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +247,12 @@ def build_investor_markdown(result: Dict[str, Any], options: Optional[Dict[str, 
     for a in s["approaches"]:
         L.append(f"- **{a['title']}.** {a['text']}")
     L.append("")
+    dl = _diligence_lines(s)
+    if dl:
+        L.append("## How thoroughly it's been checked")
+        for line in dl:
+            L.append(line.replace("<em>", "*").replace("</em>", "*"))
+        L.append("")
     L.append("## What to watch out for")
     if s["risks"]:
         if s["risk_discount"]:
@@ -282,6 +316,12 @@ def build_investor_html(result: Dict[str, Any], options: Optional[Dict[str, Any]
         risk_html = ("<p>No major red flags were entered. Note: that may just mean the "
                      "diligence checklist wasn't filled in — worth doing before you rely on this.</p>")
 
+    dl = _diligence_lines(s)
+    dilig_html = ""
+    if dl:
+        dilig_html = ("<h2>How thoroughly it's been checked</h2>"
+                      + "".join(f"<p>{line}</p>" for line in dl))
+
     if rr:
         hero = (f"<div class='rng'>{_money(rr.get('low'))} – {_money(rr.get('high'))}</div>"
                 f"<div class='mid'>middle estimate {_money(rr.get('mid'))}</div>")
@@ -329,6 +369,8 @@ def build_investor_html(result: Dict[str, Any], options: Optional[Dict[str, Any]
  <p>We valued the business a few different ways and blended them. When the methods roughly agree,
  you can be more confident in the answer.</p>
  {approach_html}
+
+ {dilig_html}
 
  <h2>What to watch out for</h2>
  {risk_html}

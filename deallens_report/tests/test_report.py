@@ -152,6 +152,19 @@ def test_plain_english_report_html():
     assert "one or a few customers" in h.lower() or "current owner" in h.lower()
 
 
+def test_plain_english_includes_diligence():
+    from report import render
+    result = dict(ORCH_RESULT)
+    result["diligence"] = dict(ORCH_RESULT["diligence"],
+                               completion_pct=0,
+                               risk_profile=[{"category": "Customers", "level": "high", "open_items": 3},
+                                             {"category": "People", "level": "medium", "open_items": 2}])
+    h = render(result, "html", {"style": "plain"})
+    assert "How thoroughly it" in h
+    assert "preliminary" in h.lower()          # 0% completion messaging
+    assert "Customers (high concern)" in h     # per-area concern summary
+
+
 def test_plain_english_markdown():
     from report import render
     m = render(ORCH_RESULT, "markdown", {"style": "plain"})
