@@ -165,6 +165,28 @@ def test_plain_style_via_invoke():
     assert env["ok"] and "worth" in env["result"]["content"].lower()
 
 
+def test_investor_bank_fragment():
+    from report import build_investor_bank
+    frag = build_investor_bank({
+        "bank_type": "universal_bank", "roe": 0.10,
+        "approaches": {"price_to_book": {"low": 120e9, "high": 240e9},
+                       "price_to_earnings": {"low": 96e9, "high": 156e9}},
+        "recommended_range": {"low": 108e9, "high": 198e9, "mid": 153e9}})
+    assert "net worth" in frag.lower() and "return on equity" in frag.lower()
+    assert "not financial advice" in frag.lower()
+
+
+def test_investor_sotp_fragment():
+    from report import build_investor_sotp
+    frag = build_investor_sotp({
+        "conglomerate_discount": 0.10,
+        "segments": [{"name": "Cloud", "value_range": {"low": 100, "high": 200}},
+                     {"name": "Retail", "value_range": {"low": 50, "high": 90}}],
+        "equity_range": {"low": 135, "high": 261, "mid": 198}})
+    assert "Cloud" in frag and "Retail" in frag
+    assert "separately" in frag.lower()
+
+
 def test_docx_written_when_available(tmp_path):
     docx = pytest.importorskip("docx")  # noqa: F841
     from report import write_docx

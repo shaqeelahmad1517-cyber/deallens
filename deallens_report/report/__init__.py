@@ -2,7 +2,9 @@
 from .docx_writer import available as docx_available, write_docx
 from .normalize import extract
 from .primitive import ENGINE_NAME, ENGINE_VERSION, MANIFEST, invoke, manifest
-from .investor import build_investor_html, build_investor_markdown
+from .investor import (
+    build_investor_bank, build_investor_html, build_investor_markdown, build_investor_sotp,
+)
 from .render import build_html, build_markdown, render
 
 __version__ = ENGINE_VERSION

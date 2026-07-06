@@ -214,6 +214,20 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
         except Exception as exc:
             return _err(exc)
 
+    if sub == ["explain"] and method == "POST":
+        try:
+            import report
+            kind = body.get("kind"); res = body.get("result") or {}
+            if kind == "bank":
+                frag = report.build_investor_bank(res)
+            elif kind == "sotp":
+                frag = report.build_investor_sotp(res)
+            else:
+                raise ValueError("kind must be 'bank' or 'sotp'")
+            return 200, {"ok": True, "result": {"html": frag}}, "application/json"
+        except Exception as exc:
+            return _err(exc)
+
     # --- accounting integrations (QuickBooks / Xero / mock) ---
     if sub == ["integrations"] and method == "GET":
         try:

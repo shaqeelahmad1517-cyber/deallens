@@ -164,12 +164,15 @@ async function runBank(){
   for(const [k,a] of Object.entries(r.approaches||{})){
     rows+=`<tr><td>${k.replace(/_/g,' ')} (×${a.multiple[0]}–${a.multiple[1]})</td><td class="num">${money(a.low)} – ${money(a.high)}</td></tr>`;
   }
+  window._lastBank=r;
   box.innerHTML=`<div class="hero" style="margin-top:16px;">
       <div class="lbl">Indicative value — ${(($('b_name').value)||'this institution')} (${r.bank_type.replace(/_/g,' ')})</div>
       <div class="rng">${money(rr.low)} – ${money(rr.high)}</div>
       <div class="mid">Midpoint ${money(rr.mid)}${r.roe!=null?' · ROE '+(r.roe*100).toFixed(1)+'%':''}</div></div>
     <table><thead><tr><th>Method</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="muted" style="margin-top:8px;">${r.method}</div>`;
+    <div class="muted" style="margin-top:8px;">${r.method}</div>
+    <div class="row" style="margin-top:10px;"><button class="sm ghost" onclick="explainResult('bank',window._lastBank,'b_explain')">📖 Explain in plain English</button></div>
+    <div id="b_explain"></div>`;
 }
 
 // ---- Conglomerate (sum-of-the-parts) ----
@@ -268,11 +271,19 @@ async function runConglomerate(){
     const meta = s.multiple ? `${s.sector} ×${s.multiple[0]}–${s.multiple[1]}` : `deep: ${(s.approaches||[]).join('+')}`;
     return `<tr><td>${s.name} <span class="muted">(${meta})</span></td><td class="num">${money(s.value_range.low)} – ${money(s.value_range.high)}</td></tr>`;
   }).join('');
+  window._lastSotp=r;
   box.innerHTML=`<div class="hero" style="margin-top:16px;">
       <div class="lbl">Sum-of-the-parts equity value <span style="opacity:.8">· ${r.mode} mode</span></div>
       <div class="rng">${money(eq.low)} – ${money(eq.high)}</div>
       <div class="mid">Midpoint ${money(eq.mid)} · after ${Math.round(r.conglomerate_discount*100)}% discount, net debt ${money(r.net_debt)}</div></div>
-    <table><thead><tr><th>Segment</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <table><thead><tr><th>Segment</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="row" style="margin-top:10px;"><button class="sm ghost" onclick="explainResult('sotp',window._lastSotp,'sotp_explain')">📖 Explain in plain English</button></div>
+    <div id="sotp_explain"></div>`;
+}
+async function explainResult(kind,result,targetId){
+  const box=$(targetId); box.innerHTML='<div class="muted" style="margin-top:8px;">…</div>';
+  const env=await api('POST','/api/explain',{kind,result});
+  box.innerHTML = env.ok ? env.result.html : `<div class="muted" style="color:#C0392B">${env.error.message}</div>`;
 }
 
 function showQuickScreen(){

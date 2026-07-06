@@ -122,6 +122,73 @@ def _sections(result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Plain-English HTML fragments for the Bank and Conglomerate screens.
+# (These return an injectable fragment, not a full page.)
+# ---------------------------------------------------------------------------
+_FRAG = ("border:1px solid #e2ebf5;background:#f5f8fc;border-radius:10px;"
+         "padding:14px 18px;margin-top:14px;line-height:1.6;")
+
+
+def build_investor_bank(result: Dict[str, Any]) -> str:
+    ap = result.get("approaches", {}) or {}
+    rr = result.get("recommended_range") or {}
+    roe = result.get("roe")
+    pb = ap.get("price_to_book"); pe = ap.get("price_to_earnings")
+    parts = [f"<div style='{_FRAG}'>",
+             "<div style='font-weight:700;color:%s'>In plain English</div>" % ACCENT,
+             "<p>A bank isn't valued like a normal company — you can't just multiply its "
+             "profit, because lending and borrowing money <em>is</em> its business "
+             "(interest is its revenue, not a cost). So we look at two things:</p><ul>"]
+    if pb:
+        parts.append("<li><strong>Its net worth (book value).</strong> What the bank owns "
+                     "minus what it owes, times a multiple. Banks often trade near this "
+                     f"— here that's {_money(pb.get('low'))} to {_money(pb.get('high'))}.</li>")
+    if pe:
+        parts.append("<li><strong>Its yearly profit.</strong> Profit times a multiple — here "
+                     f"{_money(pe.get('low'))} to {_money(pe.get('high'))}.</li>")
+    parts.append("</ul>")
+    if rr:
+        parts.append(f"<p>Blending those, it looks worth roughly <strong>{_money(rr.get('low'))} "
+                     f"to {_money(rr.get('high'))}</strong>.</p>")
+    if roe is not None:
+        parts.append(f"<p>Its <strong>return on equity is {roe*100:.1f}%</strong> — how much "
+                     "profit it earns on its net worth each year. Higher is generally healthier; "
+                     "many solid banks sit around 10–15%.</p>")
+    parts.append("<p><strong>For you as a buyer:</strong> a price within that range is broadly "
+                 "fair. Well below book value can mean a bargain — or that the market worries "
+                 "about the loans on its books. Always dig into loan quality.</p>")
+    parts.append("<div style='color:#888;font-size:12px;margin-top:6px'>A guide to help you think, "
+                 "not financial advice.</div></div>")
+    return "".join(parts)
+
+
+def build_investor_sotp(result: Dict[str, Any]) -> str:
+    segs = result.get("segments", []) or []
+    eq = result.get("equity_range") or {}
+    disc = result.get("conglomerate_discount", 0)
+    parts = [f"<div style='{_FRAG}'>",
+             "<div style='font-weight:700;color:%s'>In plain English</div>" % ACCENT,
+             "<p>This company is really several different businesses bundled together. Each one "
+             "is worth a different amount per dollar of earnings, so we valued them "
+             "<strong>separately</strong> and added them up — that's 'sum of the parts'.</p><ul>"]
+    for s in segs:
+        v = s.get("value_range", {})
+        parts.append(f"<li><strong>{_esc(s.get('name'))}</strong> looks worth about "
+                     f"{_money(v.get('low'))} to {_money(v.get('high'))}.</li>")
+    parts.append("</ul>")
+    if eq:
+        note = f" (after a {disc*100:.0f}% conglomerate discount and subtracting debt)" if disc else ""
+        parts.append(f"<p>Added together{note}, the whole company looks worth roughly "
+                     f"<strong>{_money(eq.get('low'))} to {_money(eq.get('high'))}</strong>.</p>")
+    parts.append("<p><strong>Why value the parts separately?</strong> A single blended multiple "
+                 "would ignore that, say, a fast-growing software unit is worth far more per "
+                 "dollar than a low-margin retail unit. Splitting it up is more honest.</p>")
+    parts.append("<div style='color:#888;font-size:12px;margin-top:6px'>A guide to help you think, "
+                 "not financial advice.</div></div>")
+    return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # Markdown
 # ---------------------------------------------------------------------------
 def build_investor_markdown(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None) -> str:
