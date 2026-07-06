@@ -9,8 +9,9 @@ WORKDIR /app
 # Copy the whole platform (all deallens_* packages + the UI/gateway).
 COPY . /app
 
-# Optional: Word (.docx) report support. Everything else needs no deps.
-RUN pip install --no-cache-dir python-docx==1.2.0 || true
+# Optional extras: Word (.docx) reports and PDF statement reading.
+# Everything else needs no dependencies.
+RUN pip install --no-cache-dir python-docx==1.2.0 pdfplumber==0.11.4 || true
 
 # The gateway finds sibling packages relative to this directory.
 ENV DEALLENS_HOME=/app
