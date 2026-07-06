@@ -214,6 +214,21 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
         except Exception as exc:
             return _err(exc)
 
+    if sub[:2] == ["diligence", "template"] and method == "GET":
+        try:
+            import diligence_engine
+            bt = qs.get("business_type", "general")
+            try:
+                tmpl = diligence_engine.get_template(bt)
+            except ValueError:
+                bt = "general"                       # legacy/sector value -> safe default
+                tmpl = diligence_engine.get_template(bt)
+            items = [{"id": t.id, "category": t.category.value, "prompt": t.prompt,
+                      "critical": t.critical} for t in tmpl]
+            return 200, {"ok": True, "result": {"business_type": bt, "items": items}}, "application/json"
+        except Exception as exc:
+            return _err(exc)
+
     if sub == ["explain"] and method == "POST":
         try:
             import report

@@ -79,6 +79,16 @@ def test_bad_create_returns_400(tmp_path):
     assert status == 400 and env["ok"] is False
 
 
+def test_diligence_template_route(tmp_path):
+    s, env, _ = handle_api("GET", "/api/diligence/template?business_type=smb", None,
+                           _root(tmp_path), user_id=U)
+    assert s == 200 and env["ok"]
+    items = env["result"]["items"]
+    assert any(i["id"] == "cust_concentration" for i in items)
+    assert any(i["category"] == "Financial" for i in items)
+    assert any(i["id"] == "smb_lease" for i in items)   # smb-specific item present
+
+
 def test_deals_are_isolated_by_user(tmp_path):
     root = _root(tmp_path)
     handle_api("POST", "/api/deals", {"target_name": "Mine"}, root, user_id="u-1")

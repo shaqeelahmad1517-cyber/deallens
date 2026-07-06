@@ -280,6 +280,74 @@ async function runConglomerate(){
     <div class="row" style="margin-top:10px;"><button class="sm ghost" onclick="explainResult('sotp',window._lastSotp,'sotp_explain')">📖 Explain in plain English</button></div>
     <div id="sotp_explain"></div>`;
 }
+// ---- Due diligence checklist ----
+const CK_STATUS=['not_started','in_progress','complete','flagged','na'];
+const CK_RATING=['none','low','medium','high'];
+function _yn(id){const v=$(id)?$(id).value:''; return v==='yes'?true:(v==='no'?false:undefined);}
+function _ynVal(b){return b===true?'yes':(b===false?'no':'');}
+
+async function openChecklist(id){
+  const denv=await api('GET','/api/deals/'+id);
+  if(!denv.ok){toast('Error');return;}
+  const d=denv.result, cl=d.checklist||{}, bt=cl.business_type||'general';
+  const existing={}; (cl.items||[]).forEach(it=>existing[it.id]=it);
+  const sig=cl.signals||{};
+  const tenv=await api('GET','/api/diligence/template?business_type='+encodeURIComponent(bt));
+  if(!tenv.ok){toast(tenv.error.message);return;}
+  const items=tenv.result.items;
+  window._ckId=id; window._ckBt=bt; window._ckItems=items.map(i=>i.id);
+  const cats={}; items.forEach(it=>{(cats[it.category]=cats[it.category]||[]).push(it);});
+  let body=`<h2>📋 Due diligence — ${d.target_name||'deal'}</h2>
+    <div class="muted">Business type: <strong>${bt}</strong>. Work through each item as you investigate and flag concerns. The facts you enter below trigger automatic red flags that adjust the valuation. ★ = critical item.</div>
+    <h3>Key facts <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(drive automatic red flags — leave blank if unknown)</span></h3>
+    <div class="muted" style="margin-bottom:6px;">Enter what you know. These can be pre-filled from imported data in future; for now they're manual.</div>
+    <div class="card"><div class="grid3">
+      ${field('Top customer % of revenue','ck_sig_topcust',sig.top_customer_pct!=null?sig.top_customer_pct:'','number')}
+      ${field('Customer retention %','ck_sig_retention',sig.customer_retention_pct!=null?sig.customer_retention_pct:'','number')}
+      ${selectField('Revenue trend','ck_sig_trend',['','growing','flat','declining'],sig.revenue_trend||'')}
+      ${selectField('Owner-dependent?','ck_sig_owner',['','yes','no'],_ynVal(sig.owner_dependent))}
+      ${selectField('Clean books?','ck_sig_books',['','yes','no'],_ynVal(sig.clean_books))}
+      ${selectField('Litigation pending?','ck_sig_lit',['','yes','no'],_ynVal(sig.litigation_pending))}
+      ${selectField('Contracts assignable?','ck_sig_contracts',['','yes','no'],_ynVal(sig.contracts_assignable))}
+      ${selectField('Taxes current?','ck_sig_taxes',['','yes','no'],_ynVal(sig.taxes_current))}
+    </div></div>`;
+  for(const cat of Object.keys(cats)){
+    body+=`<h3>${cat}</h3>`;
+    cats[cat].forEach(it=>{
+      const e=existing[it.id]||{};
+      body+=`<div class="card" style="padding:10px;margin-bottom:6px;">
+        <div>${it.prompt} ${it.critical?'<span title="critical" style="color:#C0392B">★</span>':''}</div>
+        <div class="grid3" style="margin-top:6px;">
+          ${selectField('Status','ck_st_'+it.id,CK_STATUS,e.status||'not_started')}
+          ${selectField('Risk','ck_rk_'+it.id,CK_RATING,e.risk_rating||'none')}
+          ${field('Notes','ck_nt_'+it.id,(e.notes||'').replace(/"/g,'&quot;'))}
+        </div></div>`;
+    });
+  }
+  body+=`<div class="row" style="margin-top:16px;position:sticky;bottom:0;background:#eef1f6;padding:12px 0;">
+     <button onclick="saveChecklist()">Save &amp; re-evaluate</button>
+     <button class="ghost" onclick="openDeal('${id}')">Back to deal</button></div>`;
+  $('main').innerHTML=body; window.scrollTo(0,0);
+}
+async function saveChecklist(){
+  const id=window._ckId, bt=window._ckBt, ids=window._ckItems||[];
+  const items=[];
+  ids.forEach(iid=>{
+    const st=$('ck_st_'+iid).value, rk=$('ck_rk_'+iid).value, nt=$('ck_nt_'+iid).value;
+    if(st!=='not_started'||rk!=='none'||(nt&&nt.trim())) items.push({id:iid,status:st,risk_rating:rk,notes:nt});
+  });
+  const sig={};
+  const tc=num('ck_sig_topcust'); if(tc!==undefined)sig.top_customer_pct=tc;
+  const rr=num('ck_sig_retention'); if(rr!==undefined)sig.customer_retention_pct=rr;
+  const rt=$('ck_sig_trend').value; if(rt)sig.revenue_trend=rt;
+  [['ck_sig_owner','owner_dependent'],['ck_sig_books','clean_books'],['ck_sig_lit','litigation_pending'],['ck_sig_contracts','contracts_assignable'],['ck_sig_taxes','taxes_current']].forEach(([el,key])=>{const v=_yn(el); if(v!==undefined)sig[key]=v;});
+  const env=await api('PATCH','/api/deals/'+id,{checklist:{business_type:bt,items,signals:sig}});
+  if(!env.ok){toast(env.error.message);return;}
+  toast('Saved — re-evaluating…');
+  await api('POST','/api/deals/'+id+'/evaluate',{});
+  openDeal(id);
+}
+
 async function explainResult(kind,result,targetId){
   const box=$(targetId); box.innerHTML='<div class="muted" style="margin-top:8px;">…</div>';
   const env=await api('POST','/api/explain',{kind,result});
@@ -483,6 +551,7 @@ async function openDeal(id){
       <span class="muted">Stage: <span class="stage">${d.stage}</span> · ${d.checklist&&d.checklist.business_type||'—'} · sector ${d.comparables&&d.comparables.sector||'—'}</span>
       <span class="row">
         <button class="sm" onclick="evaluate('${id}')">Evaluate</button>
+        <button class="sm ghost" onclick="openChecklist('${id}')">📋 Due diligence</button>
         <button class="sm ghost" onclick="viewReport('${id}')" ${ev?'':'disabled'}>View report</button>
         <button class="sm ghost" onclick="viewPlainReport('${id}')" ${ev?'':'disabled'}>📖 Plain-English report</button>
         <button class="sm ghost" onclick="delDeal('${id}')">Delete</button>
