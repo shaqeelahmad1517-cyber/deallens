@@ -98,7 +98,7 @@ def _manifests() -> Dict[str, Any]:
     out = {}
     for mod in ("valuation_engine", "diligence_engine", "comparables", "orchestrator",
                 "report", "workspace", "quickscreen", "documents", "assist", "accounts",
-                "integrations", "banking", "sotp"):
+                "integrations", "banking", "sotp", "understanding"):
         try:
             out[mod] = __import__(mod).manifest()
         except Exception as exc:  # pragma: no cover
@@ -191,6 +191,28 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
                     except OSError:
                         pass
             return _wrap(documents.invoke(body))
+        except Exception as exc:
+            return _err(exc)
+    if sub == ["understand"] and method == "POST":
+        try:
+            import understanding
+            # File upload: {filename, content_b64} -> temp file -> read by path.
+            if body.get("content_b64") and body.get("filename"):
+                import base64
+                import tempfile
+                ext = os.path.splitext(body["filename"])[1] or ".txt"
+                raw = base64.b64decode(body["content_b64"])
+                with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tf:
+                    tf.write(raw)
+                    tmp = tf.name
+                try:
+                    return _wrap(understanding.invoke({"path": tmp}))
+                finally:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+            return _wrap(understanding.invoke({"text": body.get("text", "")}))
         except Exception as exc:
             return _err(exc)
     if sub == ["assist"] and method == "POST":

@@ -419,8 +419,10 @@ function showCreate(){
       <input type="file" id="f_file" accept=".xlsx,.csv,.tsv,.docx,.pdf,.txt" onchange="extractFile()">
     </div>
     <textarea id="f_paste" rows="4" placeholder="…or paste lines here, e.g. Revenue 4,200,000" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font:inherit;font-family:monospace;font-size:13px;"></textarea>
-    <div class="row" style="margin-top:8px;"><button class="sm" onclick="extractPaste()">Extract &amp; fill</button>
+    <div class="row" style="margin-top:8px;gap:8px;"><button class="sm" onclick="extractPaste()">Extract &amp; fill</button>
+      <button class="sm ghost" onclick="understandDoc()" title="Reads a full report (annual report / 10-K) to pull figures AND diligence findings. Uses AI when a key is configured, otherwise a keyword scan.">🧠 Read full report (AI)</button>
       <span id="f_extract_msg" class="muted"></span></div>
+    <div id="f_findings" style="margin-top:10px;"></div>
     <div id="f_integrations" style="margin-top:12px;border-top:1px solid #cfe0f5;padding-top:10px;"></div>
   </div>
   <div class="card" style="margin-top:14px;">
@@ -488,6 +490,47 @@ async function extractFile(){
   for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
   const b64=btoa(bin);
   _fillFromIngest(await api('POST','/api/ingest',{filename:file.name, content_b64:b64}));
+}
+
+function _fillSignals(sig){
+  if(!sig)return;
+  if(sig.top_customer_pct!=null && $('f_topcust')) $('f_topcust').value=sig.top_customer_pct;
+  if(sig.revenue_trend && $('f_trend')) $('f_trend').value=sig.revenue_trend;
+  if(sig.owner_dependent!=null && $('f_ownerdep')) $('f_ownerdep').value=String(sig.owner_dependent);
+}
+
+function _renderFindings(res){
+  const box=$('f_findings'); if(!box)return;
+  const fnd=res.findings||[];
+  const src={llm:'AI-read',keywords:'keyword scan',keywords_fallback:'keyword scan (AI unavailable)'}[res.source]||res.source;
+  const colors={high:'#c0392b',medium:'#b9770e',low:'#7a7a7a'};
+  let html=`<div class="muted" style="margin-bottom:4px;">Diligence findings <span style="opacity:.7">· ${src}${res.model?' · '+res.model:''}</span></div>`;
+  if(!fnd.length){ html+=`<div class="muted">No red flags surfaced. Still review the full document.</div>`; }
+  else html+=fnd.map(f=>`<div style="padding:6px 9px;margin-bottom:5px;border-left:3px solid ${colors[f.severity]||'#999'};background:#fff;border-radius:5px;">
+      <strong style="color:${colors[f.severity]||'#333'};text-transform:uppercase;font-size:11px;">${f.severity}</strong>
+      <span style="font-size:11px;color:#888;"> · ${f.category}</span><br>${f.finding}</div>`).join('');
+  html+=`<div class="muted" style="margin-top:4px;font-size:11px;">These are suggestions to verify — they pre-fill the risk signals above; confirm on the due-diligence checklist after creating.</div>`;
+  box.innerHTML=html;
+}
+
+async function understandDoc(){
+  const file=$('f_file').files[0];
+  const text=$('f_paste').value.trim();
+  if(!file && !text){$('f_extract_msg').textContent='Upload a report or paste text first.';return;}
+  $('f_extract_msg').textContent='Reading the document…';
+  $('f_findings').innerHTML='';
+  let env;
+  if(file){
+    const buf=await file.arrayBuffer(); let bin=''; const bytes=new Uint8Array(buf);
+    for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+    env=await api('POST','/api/understand',{filename:file.name, content_b64:btoa(bin)});
+  } else {
+    env=await api('POST','/api/understand',{text});
+  }
+  if(!env.ok){$('f_extract_msg').textContent='Error: '+env.error.message;return;}
+  _fillFromIngest({ok:true, result:{financials:env.result.financials, warnings:env.result.warnings}});
+  _fillSignals(env.result.signals);
+  _renderFindings(env.result);
 }
 
 async function loadIntegrations(){

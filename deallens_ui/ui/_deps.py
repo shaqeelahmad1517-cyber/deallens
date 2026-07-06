@@ -22,6 +22,7 @@ _SIBLINGS = (
     "deallens_integrations",
     "deallens_banking",
     "deallens_sotp",
+    "deallens_understanding",
 )
 
 
