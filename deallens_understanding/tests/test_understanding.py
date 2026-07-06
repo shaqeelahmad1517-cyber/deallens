@@ -131,3 +131,37 @@ def test_prompt_truncates_long_documents():
     huge = "x" * 200_000
     p = llm.build_prompt(huge)
     assert "truncated" in p and len(p) < 200_000
+
+
+# ---------------------------------------------------------------------------
+# Reporting-scale (the fix for the "quadrillion" bug): the model returns figures
+# AS PRINTED plus a unit; we scale deterministically in code.
+# ---------------------------------------------------------------------------
+def test_reporting_scale_applied_in_millions():
+    def t(prompt):
+        return {"reporting_scale": "millions",
+                "financials": {"revenue": 20094.2, "net_income": 2593.9,
+                               "total_assets": 31452.0, "total_liabilities": 20752.0},
+                "signals": {}, "findings": []}
+    r = understand({"text": DOC}, transport=t)
+    assert r["financials"]["revenue"] == 20094.2 * 1e6      # -> 20,094,200,000
+    assert r["financials"]["net_income"] == 2593.9 * 1e6
+    assert r["reporting_scale"] == "millions"
+    assert any("scaled by 1,000,000" in w for w in r["warnings"])
+
+
+def test_units_scale_leaves_absolute_numbers():
+    def t(prompt):
+        return {"reporting_scale": "units",
+                "financials": {"revenue": 4200000, "net_income": 520000},
+                "signals": {}, "findings": []}
+    r = understand({"text": DOC}, transport=t)
+    assert r["financials"]["revenue"] == 4_200_000
+
+
+def test_implausible_figure_warns():
+    def t(prompt):
+        return {"reporting_scale": "millions",       # 20,094,200 (millions) -> 2.0e13
+                "financials": {"revenue": 20094200.0}, "signals": {}, "findings": []}
+    r = understand({"text": DOC}, transport=t)
+    assert any("implausibly large" in w for w in r["warnings"])

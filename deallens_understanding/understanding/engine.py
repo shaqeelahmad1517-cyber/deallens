@@ -42,7 +42,26 @@ def _get_text(payload: Dict[str, Any]) -> str:
     raise ValueError("provide 'text' or 'path'")
 
 
-def _clean_financials(raw: Any) -> Dict[str, float]:
+_SCALE = {"units": 1.0, "unit": 1.0, "dollars": 1.0, "actual": 1.0,
+          "thousands": 1e3, "thousand": 1e3,
+          "millions": 1e6, "million": 1e6, "mn": 1e6,
+          "billions": 1e9, "billion": 1e9, "bn": 1e9}
+_IMPLAUSIBLE = 1e13  # > $10 trillion for a single figure => almost certainly a units error
+
+
+def _scale_factor(raw_scale: Any) -> float:
+    """Map the model's reported unit to a multiplier (default: units)."""
+    if isinstance(raw_scale, str):
+        return _SCALE.get(raw_scale.strip().lower(), 1.0)
+    return 1.0
+
+
+def _clean_financials(raw: Any, factor: float = 1.0) -> Dict[str, float]:
+    """Clean + apply the reporting-scale multiplier deterministically.
+
+    The model returns figures AS PRINTED; we scale here so the LLM never has to
+    do (error-prone) arithmetic like 20,094.2 x 1,000,000.
+    """
     out: Dict[str, float] = {}
     if isinstance(raw, dict):
         for f in _FIN_FIELDS:
@@ -50,7 +69,7 @@ def _clean_financials(raw: Any) -> Dict[str, float]:
             if isinstance(v, bool):
                 continue
             if isinstance(v, (int, float)):
-                out[f] = float(v)
+                out[f] = float(v) * factor
     return out
 
 
@@ -84,8 +103,23 @@ def _clean_findings(raw: Any) -> List[Dict[str, Any]]:
 
 
 def _shape(data: Dict[str, Any], source: str, warnings: List[str]) -> Dict[str, Any]:
+    # Keyword-fallback financials come pre-scaled by the documents extractor;
+    # only the LLM path returns raw figures + a reporting_scale to apply here.
+    factor = _scale_factor(data.get("reporting_scale")) if source == "llm" else 1.0
+    financials = _clean_financials(data.get("financials"), factor)
+
+    warnings = list(warnings)
+    if source == "llm" and factor != 1.0:
+        warnings.append(f"Figures read as '{data.get('reporting_scale')}' — scaled "
+                        f"by {int(factor):,}. Verify against the statement header.")
+    bad = [k for k, v in financials.items() if abs(v) > _IMPLAUSIBLE]
+    if bad:
+        warnings.append("Some figures look implausibly large (" + ", ".join(bad) +
+                        ") — check the statement's units before trusting the valuation.")
+
     return {
-        "financials": _clean_financials(data.get("financials")),
+        "financials": financials,
+        "reporting_scale": data.get("reporting_scale") if source == "llm" else None,
         "signals": _clean_signals(data.get("signals")),
         "findings": _clean_findings(data.get("findings")),
         "source": source,           # "llm" | "keywords" | "keywords_fallback"

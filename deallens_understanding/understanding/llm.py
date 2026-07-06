@@ -27,6 +27,7 @@ company document below and extract structured facts. Return ONLY a JSON object \
 (no prose, no markdown fences) with exactly this shape:
 
 {
+  "reporting_scale": "units" | "thousands" | "millions" | "billions",
   "financials": {
     "revenue": number|null, "net_income": number|null, "interest": number|null,
     "taxes": number|null, "depreciation": number|null, "amortization": number|null,
@@ -45,8 +46,11 @@ company document below and extract structured facts. Return ONLY a JSON object \
 }
 
 Rules:
-- Report every financial figure in absolute dollars. If the statement says \
-"in thousands"/"in millions", multiply accordingly.
+- Report every financial figure EXACTLY as printed in the statement. Do NOT \
+multiply, scale, or add zeros yourself. Instead set "reporting_scale" to the unit \
+the statement is presented in — look for wording like "in millions" / "in \
+thousands" near the statement header (use "units" if figures are already whole \
+dollars). We apply the multiplier ourselves.
 - Use the most recent reported period. Use null for anything not stated — never guess.
 - "findings" are diligence red/amber flags a buyer should verify: customer or \
 supplier concentration, going-concern or material-weakness language, litigation, \
