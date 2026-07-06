@@ -141,6 +141,30 @@ def test_determinism():
 # ---------------------------------------------------------------------------
 # Optional DOCX
 # ---------------------------------------------------------------------------
+def test_plain_english_report_html():
+    from report import render
+    h = render(ORCH_RESULT, "html", {"style": "plain"})
+    assert "Plain-English" in h or "plain-english" in h.lower()
+    assert "What is" in h and "worth" in h
+    assert "no finance background" in h.lower()
+    assert "Questions worth asking" in h
+    # explains a risk in plain terms, not just the label
+    assert "one or a few customers" in h.lower() or "current owner" in h.lower()
+
+
+def test_plain_english_markdown():
+    from report import render
+    m = render(ORCH_RESULT, "markdown", {"style": "plain"})
+    assert m.startswith("# Plain-English Valuation")
+    assert "fair-price zone" in m
+    assert "A few terms, briefly" in m
+
+
+def test_plain_style_via_invoke():
+    env = invoke({"result": ORCH_RESULT, "format": "html", "options": {"style": "plain"}})
+    assert env["ok"] and "worth" in env["result"]["content"].lower()
+
+
 def test_docx_written_when_available(tmp_path):
     docx = pytest.importorskip("docx")  # noqa: F841
     from report import write_docx

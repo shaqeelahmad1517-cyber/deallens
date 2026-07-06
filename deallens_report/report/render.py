@@ -291,6 +291,13 @@ def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
 def render(result: Dict[str, Any], fmt: str = "html", options: Optional[Dict[str, Any]] = None) -> str:
     fmt = (fmt or "html").lower()
+    options = options or {}
+    # Plain-English 'investor' style — same data, non-finance explanations.
+    if str(options.get("style", "")).lower() in ("plain", "investor"):
+        from . import investor
+        if fmt in ("markdown", "md"):
+            return investor.build_investor_markdown(result, options)
+        return investor.build_investor_html(result, options)
     if fmt in ("html", "htm"):
         return build_html(result, options)
     if fmt in ("markdown", "md"):

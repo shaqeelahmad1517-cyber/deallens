@@ -473,6 +473,7 @@ async function openDeal(id){
       <span class="row">
         <button class="sm" onclick="evaluate('${id}')">Evaluate</button>
         <button class="sm ghost" onclick="viewReport('${id}')" ${ev?'':'disabled'}>View report</button>
+        <button class="sm ghost" onclick="viewPlainReport('${id}')" ${ev?'':'disabled'}>📖 Plain-English report</button>
         <button class="sm ghost" onclick="delDeal('${id}')">Delete</button>
       </span>
     </div>`;
@@ -550,6 +551,7 @@ async function genReport(id,fmt){
   toast('Saved: '+env.result.path);
 }
 function viewReport(id){ window.open('/api/deals/'+id+'/report','_blank'); }
+function viewPlainReport(id){ window.open('/api/deals/'+id+'/report?style=plain','_blank'); }
 async function draftSummary(id){
   const box=$('ai_summary'); box.textContent='Drafting…';
   if(!window._lastEval){box.textContent='Evaluate the deal first.';return;}

@@ -272,7 +272,8 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
                 return _wrap(_ws({"action": "report", "id": did,
                                   "format": body.get("format", "html")}, root, user_id))
         if len(sub) == 3 and sub[2] == "report" and method == "GET":
-            env = _ws({"action": "report", "id": did, "format": "html"}, root, user_id)
+            opts = {"style": "plain"} if qs.get("style") == "plain" else None
+            env = _ws({"action": "report", "id": did, "format": "html", "options": opts}, root, user_id)
             if not env.get("ok"):
                 return 400, env, "application/json"
             with open(env["result"]["path"], "r", encoding="utf-8") as fh:
