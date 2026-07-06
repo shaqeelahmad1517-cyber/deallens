@@ -27,6 +27,8 @@ company document below and extract structured facts. Return ONLY a JSON object \
 (no prose, no markdown fences) with exactly this shape:
 
 {
+  "company_name": string|null,
+  "sector": string|null,
   "reporting_scale": "units" | "thousands" | "millions" | "billions",
   "financials": {
     "revenue": number|null, "net_income": number|null, "interest": number|null,
@@ -46,6 +48,9 @@ company document below and extract structured facts. Return ONLY a JSON object \
 }
 
 Rules:
+- "company_name": the subject company's name if stated (else null). "sector": one \
+short lowercase word for its industry (e.g. "manufacturing", "saas", "retail", \
+"restaurant", "healthcare", "logistics") or null if unclear.
 - Report every financial figure EXACTLY as printed in the statement. Do NOT \
 multiply, scale, or add zeros yourself. Instead set "reporting_scale" to the unit \
 the statement is presented in — look for wording like "in millions" / "in \

@@ -117,7 +117,12 @@ def _shape(data: Dict[str, Any], source: str, warnings: List[str]) -> Dict[str, 
         warnings.append("Some figures look implausibly large (" + ", ".join(bad) +
                         ") — check the statement's units before trusting the valuation.")
 
+    def _str_or_none(v):
+        return v.strip() if isinstance(v, str) and v.strip() else None
+
     return {
+        "company_name": _str_or_none(data.get("company_name")),
+        "sector": _str_or_none(data.get("sector")).lower() if _str_or_none(data.get("sector")) else None,
         "financials": financials,
         "reporting_scale": data.get("reporting_scale") if source == "llm" else None,
         "signals": _clean_signals(data.get("signals")),

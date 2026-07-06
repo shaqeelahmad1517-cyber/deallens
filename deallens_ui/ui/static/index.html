@@ -295,10 +295,21 @@ async function openChecklist(id){
   const tenv=await api('GET','/api/diligence/template?business_type='+encodeURIComponent(bt));
   if(!tenv.ok){toast(tenv.error.message);return;}
   const items=tenv.result.items;
-  window._ckId=id; window._ckBt=bt; window._ckItems=items.map(i=>i.id);
+  const aiFindings=cl.ai_findings||[];
+  window._ckId=id; window._ckBt=bt; window._ckItems=items.map(i=>i.id); window._ckAiFindings=aiFindings;
   const cats={}; items.forEach(it=>{(cats[it.category]=cats[it.category]||[]).push(it);});
   let body=`<h2>📋 Due diligence — ${d.target_name||'deal'}</h2>
-    <div class="muted">Business type: <strong>${bt}</strong>. Work through each item as you investigate and flag concerns. The facts you enter below trigger automatic red flags that adjust the valuation. ★ = critical item.</div>
+    <div class="muted">Business type: <strong>${bt}</strong>. Work through each item as you investigate and flag concerns. The facts you enter below trigger automatic red flags that adjust the valuation. ★ = critical item.</div>`;
+  if(aiFindings.length){
+    const colors={high:'#c0392b',medium:'#b9770e',low:'#7a7a7a'};
+    body+=`<div class="card" style="margin-top:14px;background:#fff8f0;border-color:#f0d8b8;">
+      <label style="margin-top:0;">🧠 AI-flagged from the uploaded report <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(suggestions — confirm each against the source)</span></label>`
+      + aiFindings.map(f=>`<div style="padding:6px 9px;margin-bottom:5px;border-left:3px solid ${colors[f.severity]||'#999'};background:#fff;border-radius:5px;">
+          <strong style="color:${colors[f.severity]||'#333'};text-transform:uppercase;font-size:11px;">${f.severity}</strong>
+          <span style="font-size:11px;color:#888;"> · ${f.category}</span><br>${(f.finding||'').replace(/</g,'&lt;')}</div>`).join('')
+      + `<div class="muted" style="font-size:11px;">Related facts are pre-filled below where the report was clear. Verify, then set the matching items' status/risk.</div></div>`;
+  }
+  body+=`
     <h3>Key facts <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(drive automatic red flags — leave blank if unknown)</span></h3>
     <div class="muted" style="margin-bottom:6px;">Enter what you know. These can be pre-filled from imported data in future; for now they're manual.</div>
     <div class="card"><div class="grid3">
@@ -341,7 +352,9 @@ async function saveChecklist(){
   const rr=num('ck_sig_retention'); if(rr!==undefined)sig.customer_retention_pct=rr;
   const rt=$('ck_sig_trend').value; if(rt)sig.revenue_trend=rt;
   [['ck_sig_owner','owner_dependent'],['ck_sig_books','clean_books'],['ck_sig_lit','litigation_pending'],['ck_sig_contracts','contracts_assignable'],['ck_sig_taxes','taxes_current']].forEach(([el,key])=>{const v=_yn(el); if(v!==undefined)sig[key]=v;});
-  const env=await api('PATCH','/api/deals/'+id,{checklist:{business_type:bt,items,signals:sig}});
+  const cl={business_type:bt,items,signals:sig};
+  if(window._ckAiFindings&&window._ckAiFindings.length) cl.ai_findings=window._ckAiFindings;
+  const env=await api('PATCH','/api/deals/'+id,{checklist:cl});
   if(!env.ok){toast(env.error.message);return;}
   toast('Saved — re-evaluating…');
   await api('POST','/api/deals/'+id+'/evaluate',{});
@@ -408,7 +421,7 @@ async function runQuickScreen(){
 }
 
 function showCreate(){
-  CURRENT=null; loadDeals();
+  CURRENT=null; window._aiExtract=null; loadDeals();
   $('main').innerHTML = `
   <h2>New deal</h2>
   <div class="muted">Enter what you know — only target name and revenue are really needed to start.</div>
@@ -433,6 +446,7 @@ function showCreate(){
       ${selectField('Valuation metric','f_metric',META.metrics,'sde')}
       ${selectField('Market tier','f_tier',['smb','public'],'smb')}
     </div>
+    <div id="f_autofit" class="muted" style="margin-top:6px;color:#1e6fb8;"></div>
     <h3>Financials</h3>
     <div class="grid3">
       ${field('Revenue','f_revenue','','number')}
@@ -472,7 +486,22 @@ function _fillFromIngest(env){
   for(const [k,id] of Object.entries(map)){ if(f[k]!=null && $(id)){ $(id).value=f[k]; n++; } }
   const warn=(env.result.warnings||[]).length;
   $('f_extract_msg').textContent=`Filled ${n} field${n===1?'':'s'}`+(warn?` · ${warn} warning(s) — check Revenue/Net income`:'')+'. Review before creating.';
+  _autoFitSize();
 }
+
+// Large companies shouldn't be valued with small-business defaults. When revenue
+// is big, switch to public-market multiples on EBITDA (the correct lens).
+const _BIG_REVENUE = 5e8;   // $500M
+function _autoFitSize(){
+  const notes=[];
+  const rev=num('f_revenue');
+  if(rev!==undefined && rev>=_BIG_REVENUE){
+    if($('f_tier')&&$('f_tier').value!=='public'){$('f_tier').value='public';notes.push('Public tier');}
+    if($('f_metric')&&$('f_metric').value!=='ebitda'){$('f_metric').value='ebitda';notes.push('EBITDA metric');}
+  }
+  if(notes.length){ $('f_autofit').textContent=`Auto-set ${notes.join(' + ')} — this looks like a large company, so small-business multiples would undervalue it. Change back if that's wrong.`; }
+}
+function _sectorKnown(s){ return s && META.sectors.includes(s); }
 
 async function extractPaste(){
   const text=$('f_paste').value.trim();
@@ -528,9 +557,17 @@ async function understandDoc(){
     env=await api('POST','/api/understand',{text});
   }
   if(!env.ok){$('f_extract_msg').textContent='Error: '+env.error.message;return;}
-  _fillFromIngest({ok:true, result:{financials:env.result.financials, warnings:env.result.warnings}});
-  _fillSignals(env.result.signals);
-  _renderFindings(env.result);
+  const res=env.result;
+  // Stash the AI signals + findings so createDeal can attach them to the deal.
+  window._aiExtract={signals:res.signals||{}, findings:res.findings||[]};
+  _fillFromIngest({ok:true, result:{financials:res.financials, warnings:res.warnings}});  // also runs _autoFitSize
+  _fillSignals(res.signals);
+  // AI-suggested name + sector (only fill what's empty / known).
+  const extra=[];
+  if(res.company_name && $('f_name') && !$('f_name').value.trim()){ $('f_name').value=res.company_name; extra.push('name'); }
+  if(_sectorKnown(res.sector) && $('f_sector')){ $('f_sector').value=res.sector; extra.push('sector '+res.sector); }
+  if(extra.length){ const el=$('f_autofit'); el.textContent=(el.textContent?el.textContent+' ':'')+'From the report: set '+extra.join(', ')+'.'; }
+  _renderFindings(res);
 }
 
 async function loadIntegrations(){
@@ -565,15 +602,19 @@ async function importProvider(p){
 async function createDeal(andEvaluate){
   const fin={}; const map={f_revenue:'revenue',f_ni:'net_income',f_owner:'owner_compensation',f_int:'interest',f_tax:'taxes',f_dep:'depreciation',f_amort:'amortization',f_assets:'total_assets',f_liab:'total_liabilities'};
   for(const [id,key] of Object.entries(map)){const v=num(id);if(v!==undefined)fin[key]=v;}
-  const signals={};
+  // Start from any AI-extracted signals, then let the visible form fields win.
+  const ai=window._aiExtract||{signals:{},findings:[]};
+  const signals=Object.assign({}, ai.signals||{});
   const tc=num('f_topcust'); if(tc!==undefined)signals.top_customer_pct=tc;
   const trend=$('f_trend').value; if(trend)signals.revenue_trend=trend;
   const od=$('f_ownerdep').value; if(od)signals.owner_dependent=(od==='true');
+  const checklist={business_type:$('f_btype').value, items:[], signals};
+  if(ai.findings&&ai.findings.length) checklist.ai_findings=ai.findings;
   const deal={
     target_name:$('f_name').value||'Untitled target',
     stage:'screening',
     financials:fin,
-    checklist:{business_type:$('f_btype').value, items:[], signals},
+    checklist,
     comparables:{sector:$('f_sector').value, metric:$('f_metric').value, tier:$('f_tier').value}
   };
   const env=await api('POST','/api/deals',deal);

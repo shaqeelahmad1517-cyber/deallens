@@ -159,6 +159,21 @@ def test_units_scale_leaves_absolute_numbers():
     assert r["financials"]["revenue"] == 4_200_000
 
 
+def test_company_name_and_sector_passthrough():
+    def t(prompt):
+        return {"company_name": "  General Mills, Inc. ", "sector": "Manufacturing",
+                "reporting_scale": "millions",
+                "financials": {"revenue": 20094.2}, "signals": {}, "findings": []}
+    r = understand({"text": DOC}, transport=t)
+    assert r["company_name"] == "General Mills, Inc."
+    assert r["sector"] == "manufacturing"          # lowercased
+
+
+def test_missing_name_sector_is_none():
+    r = understand({"text": DOC}, transport=_mock_transport)  # mock omits them
+    assert r["company_name"] is None and r["sector"] is None
+
+
 def test_implausible_figure_warns():
     def t(prompt):
         return {"reporting_scale": "millions",       # 20,094,200 (millions) -> 2.0e13
