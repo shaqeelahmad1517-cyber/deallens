@@ -93,8 +93,8 @@ def available() -> bool:
 def model_name() -> str:
     if os.environ.get("DEALLENS_LLM_MODEL"):
         return os.environ["DEALLENS_LLM_MODEL"]
-    # Broadly-available defaults; override per-account with DEALLENS_LLM_MODEL.
-    return "gpt-4o-mini" if provider() == "openai" else "claude-3-5-haiku-latest"
+    # Current-generation defaults; override per-account with DEALLENS_LLM_MODEL.
+    return "gpt-4o-mini" if provider() == "openai" else "claude-haiku-4-5-20251001"
 
 
 def extract_json(raw: str) -> Dict[str, Any]:
