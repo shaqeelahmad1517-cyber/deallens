@@ -105,16 +105,34 @@ def _clean_findings(raw: Any) -> List[Dict[str, Any]]:
 def _shape(data: Dict[str, Any], source: str, warnings: List[str]) -> Dict[str, Any]:
     # Keyword-fallback financials come pre-scaled by the documents extractor;
     # only the LLM path returns raw figures + a reporting_scale to apply here.
-    factor = _scale_factor(data.get("reporting_scale")) if source == "llm" else 1.0
-    financials = _clean_financials(data.get("financials"), factor)
-
     warnings = list(warnings)
-    if source == "llm" and factor != 1.0:
-        warnings.append(f"Figures read as '{data.get('reporting_scale')}' — scaled "
-                        f"by {int(factor):,}. Verify against the statement header.")
+    factor = _scale_factor(data.get("reporting_scale")) if source == "llm" else 1.0
+    raw = _clean_financials(data.get("financials"), 1.0)   # figures exactly as returned
+    scaled = {k: v * factor for k, v in raw.items()}
+
+    # Robustness: the model is asked to return figures "as printed" plus a unit,
+    # but it sometimes returns already-absolute dollars while STILL reporting a
+    # scale — which would double-multiply into nonsense (the "quadrillion" bug).
+    # No single company's revenue/assets exceed a few trillion, so if scaling
+    # blows past that ceiling while the unscaled figures are sane, the model must
+    # have already given absolute dollars — so we DROP the scale.
+    def _peak(d):
+        return max((abs(v) for v in d.values()), default=0.0)
+
+    if source == "llm" and factor != 1.0 and _peak(scaled) > _IMPLAUSIBLE and _peak(raw) <= _IMPLAUSIBLE:
+        financials = raw
+        warnings.append(f"Ignored a reported scale of x{int(factor):,}: the figures "
+                        f"already look like absolute dollars (auto-corrected to avoid "
+                        f"over-scaling).")
+    else:
+        financials = scaled
+        if source == "llm" and factor != 1.0:
+            warnings.append(f"Figures read as '{data.get('reporting_scale')}' — scaled "
+                            f"by {int(factor):,}. Verify against the statement header.")
+
     bad = [k for k, v in financials.items() if abs(v) > _IMPLAUSIBLE]
     if bad:
-        warnings.append("Some figures look implausibly large (" + ", ".join(bad) +
+        warnings.append("Some figures still look implausibly large (" + ", ".join(bad) +
                         ") — check the statement's units before trusting the valuation.")
 
     def _str_or_none(v):

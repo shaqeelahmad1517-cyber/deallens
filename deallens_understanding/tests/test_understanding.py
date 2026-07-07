@@ -174,9 +174,22 @@ def test_missing_name_sector_is_none():
     assert r["company_name"] is None and r["sector"] is None
 
 
-def test_implausible_figure_warns():
+def test_double_scale_auto_corrected():
+    # The model disobeyed: returned ALREADY-absolute dollars but still said "millions".
+    # We must NOT multiply again (that was the quadrillion bug) -> keep the raw figures.
     def t(prompt):
-        return {"reporting_scale": "millions",       # 20,094,200 (millions) -> 2.0e13
-                "financials": {"revenue": 20094200.0}, "signals": {}, "findings": []}
+        return {"reporting_scale": "millions",
+                "financials": {"revenue": 20094200000.0, "net_income": 2593900000.0},
+                "signals": {}, "findings": []}
+    r = understand({"text": DOC}, transport=t)
+    assert r["financials"]["revenue"] == 20094200000.0          # unchanged, not x1e6
+    assert any("already look like absolute dollars" in w for w in r["warnings"])
+
+
+def test_genuinely_absurd_figure_warns():
+    # Both raw and scaled are absurd -> can't auto-correct; warn loudly.
+    def t(prompt):
+        return {"reporting_scale": "millions",
+                "financials": {"revenue": 5e14}, "signals": {}, "findings": []}
     r = understand({"text": DOC}, transport=t)
     assert any("implausibly large" in w for w in r["warnings"])
