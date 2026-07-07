@@ -30,8 +30,10 @@ def _meta() -> Dict[str, Any]:
     try:
         import comparables
         sectors = comparables.available_sectors()
+        sector_aliases = comparables.sector_alias_map()
     except Exception:
         sectors = ["general", "logistics", "saas", "retail"]
+        sector_aliases = {}
     try:
         import banking
         bank_types = list(banking.BANK_TYPES.keys())
@@ -39,6 +41,7 @@ def _meta() -> Dict[str, Any]:
         bank_types = ["universal_bank", "regional_bank", "investment_bank", "insurance", "general_financial"]
     return {
         "sectors": sectors,
+        "sector_aliases": sector_aliases,
         "business_types": ["general", "smb", "saas", "retail"],
         "metrics": ["sde", "ebitda", "revenue"],
         "stages": list(workspace.STAGES),

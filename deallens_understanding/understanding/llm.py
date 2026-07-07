@@ -48,9 +48,13 @@ company document below and extract structured facts. Return ONLY a JSON object \
 }
 
 Rules:
-- "company_name": the subject company's name if stated (else null). "sector": one \
-short lowercase word for its industry (e.g. "manufacturing", "saas", "retail", \
-"restaurant", "healthcare", "logistics") or null if unclear.
+- "company_name": the subject company's name if stated (else null). "sector": the \
+most specific industry label, lowercase, e.g. "consumer staples", "packaged food", \
+"beverages", "consumer discretionary", "saas", "retail", "restaurant", "healthcare", \
+"pharmaceuticals", "logistics", "manufacturing", "energy", "utilities", "telecom", \
+"media", "real estate", "automotive", "aerospace and defense", "financial", "insurance". \
+Prefer the precise category (a cereal/snack maker is "packaged food"/"consumer staples", \
+not just "manufacturing"). Use null only if truly unclear.
 - Report every financial figure EXACTLY as printed in the statement. Do NOT \
 multiply, scale, or add zeros yourself. Instead set "reporting_scale" to the unit \
 the statement is presented in — look for wording like "in millions" / "in \

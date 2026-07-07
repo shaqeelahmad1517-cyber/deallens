@@ -24,6 +24,31 @@ def test_unknown_sector_errors():
         lookup(CompQuery(sector="time_travel"))
 
 
+def test_new_sectors_present():
+    s = available_sectors()
+    for k in ("consumer_staples", "beverages", "energy", "utilities", "pharmaceuticals",
+              "real_estate", "telecom", "media_entertainment"):
+        assert k in s
+
+
+def test_packaged_food_maps_to_consumer_staples():
+    from comparables import resolve_sector, sector_alias_map
+    assert resolve_sector("packaged food") == "consumer_staples"
+    assert resolve_sector("Food") == "consumer_staples"
+    assert resolve_sector("consumer staples") == "consumer_staples"
+    assert resolve_sector("oil and gas") == "energy"
+    assert resolve_sector("nonsense-xyz") is None
+    m = sector_alias_map()
+    assert m["reit"] == "real_estate" and m["pharma"] == "pharmaceuticals"
+
+
+def test_consumer_staples_public_band_is_richer_than_manufacturing():
+    cs = lookup(CompQuery(sector="consumer_staples", metric="ebitda", tier="public"))
+    mf = lookup(CompQuery(sector="manufacturing", metric="ebitda", tier="public"))
+    # A branded-food public multiple should exceed a generic manufacturer's.
+    assert cs["low_multiple"] > mf["low_multiple"]
+
+
 def test_unknown_metric_errors():
     with pytest.raises(ValueError):
         lookup(CompQuery(sector="general", metric="vibes"))

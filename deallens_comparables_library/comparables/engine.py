@@ -47,6 +47,29 @@ def available_sectors(dataset: Optional[List[Dict[str, Any]]] = None) -> List[st
     return sorted(r["sector"] for r in ds)
 
 
+def sector_alias_map(dataset: Optional[List[Dict[str, Any]]] = None) -> Dict[str, str]:
+    """Map every sector key AND alias -> its canonical sector key (lowercased).
+
+    Lets a caller (e.g. the UI) resolve a free-text industry word like 'packaged
+    food' to the canonical sector 'consumer_staples'.
+    """
+    ds = dataset if dataset is not None else load_dataset()
+    out: Dict[str, str] = {}
+    for rec in ds:
+        canon = rec["sector"]
+        out[canon.lower()] = canon
+        for alias in rec.get("aliases", []):
+            out.setdefault(alias.lower(), canon)
+    return out
+
+
+def resolve_sector(word: Optional[str], dataset: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
+    """Resolve a free-text industry word to a canonical sector key, or None."""
+    if not word:
+        return None
+    return sector_alias_map(dataset).get(str(word).strip().lower())
+
+
 def _size_factor(size_ebitda: Optional[float]) -> Tuple[float, str]:
     if size_ebitda is None:
         return 1.0, "unspecified"

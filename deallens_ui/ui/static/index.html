@@ -506,7 +506,12 @@ function _autoFitSize(){
   }
   if(notes.length){ $('f_autofit').textContent=`Auto-set ${notes.join(' + ')} — this looks like a large company, so small-business multiples would undervalue it. Change back if that's wrong.`; }
 }
-function _sectorKnown(s){ return s && META.sectors.includes(s); }
+function _resolveSector(s){
+  if(!s) return null;
+  const k=String(s).trim().toLowerCase();
+  if(META.sectors.includes(k)) return k;
+  return (META.sector_aliases && META.sector_aliases[k]) || null;
+}
 
 async function extractPaste(){
   const text=$('f_paste').value.trim();
@@ -570,8 +575,9 @@ async function understandDoc(){
   // AI-suggested name + sector (only fill what's empty / known).
   const extra=[];
   if(res.company_name && $('f_name') && !$('f_name').value.trim()){ $('f_name').value=res.company_name; extra.push('name'); }
-  if(_sectorKnown(res.sector) && $('f_sector')){ $('f_sector').value=res.sector; extra.push('sector '+res.sector); }
-  if(extra.length){ const el=$('f_autofit'); el.textContent=(el.textContent?el.textContent+' ':'')+'From the report: set '+extra.join(', ')+'.'; }
+  const sec=_resolveSector(res.sector);
+  if(sec && $('f_sector')){ $('f_sector').value=sec; extra.push('sector: '+sec+(sec!==String(res.sector||'').toLowerCase()?` (read as "${res.sector}")`:'')); }
+  if(extra.length){ const el=$('f_autofit'); el.textContent=(el.textContent?el.textContent+' ':'')+'From the report — set '+extra.join(', ')+'. Adjust the Sector dropdown if it looks off.'; }
   _renderFindings(res);
 }
 
