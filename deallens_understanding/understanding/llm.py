@@ -93,7 +93,8 @@ def available() -> bool:
 def model_name() -> str:
     if os.environ.get("DEALLENS_LLM_MODEL"):
         return os.environ["DEALLENS_LLM_MODEL"]
-    return "gpt-4o-mini" if provider() == "openai" else "claude-haiku-4-5-20251001"
+    # Broadly-available defaults; override per-account with DEALLENS_LLM_MODEL.
+    return "gpt-4o-mini" if provider() == "openai" else "claude-3-5-haiku-latest"
 
 
 def extract_json(raw: str) -> Dict[str, Any]:
@@ -114,10 +115,22 @@ def extract_json(raw: str) -> Dict[str, Any]:
 # --- real network transports (not exercised in tests) ----------------------
 def _post_json(url: str, headers: Dict[str, str], body: Dict[str, Any],
                timeout: int = 60) -> Dict[str, Any]:  # pragma: no cover - network
+    import urllib.error
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.load(resp)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as e:
+        # Surface the provider's actual error (bad key, unknown model, billing,
+        # rate limit) instead of an opaque "HTTPError".
+        try:
+            detail = e.read().decode("utf-8", "replace")
+        except Exception:
+            detail = ""
+        host = url.split("//", 1)[-1].split("/", 1)[0]
+        raise RuntimeError(f"HTTP {e.code} from {host} (model '{model_name()}'): "
+                           f"{detail[:400]}") from None
 
 
 def _anthropic(prompt: str) -> Dict[str, Any]:  # pragma: no cover - network

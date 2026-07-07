@@ -66,7 +66,7 @@ def test_llm_json_fence_parsing():
 def test_llm_failure_falls_back_to_keywords():
     r = understand({"text": DOC}, transport=_boom_transport)
     assert r["source"] == "keywords_fallback"
-    assert any("LLM call failed" in w for w in r["warnings"])
+    assert any("AI reader unavailable" in w and "429" in w for w in r["warnings"])
     # keyword scan still finds risk language
     assert any(f["category"] == "Legal" for f in r["findings"])
 

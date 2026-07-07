@@ -174,8 +174,8 @@ def understand(payload: Dict[str, Any],
                 raise ValueError("model did not return a JSON object")
             return _shape(data, "llm", [])
         except Exception as exc:
-            warn = f"LLM call failed ({type(exc).__name__}); used keyword fallback."
-            return _shape(keywords.scan(text), "keywords_fallback", [warn])
+            warn = f"AI reader unavailable — used keyword fallback. Reason: {exc}"
+            return _shape(keywords.scan(text), "keywords_fallback", [warn[:500]])
 
     warn = ("No LLM configured — used a keyword scan. Set an API key for full "
             "document understanding.")
