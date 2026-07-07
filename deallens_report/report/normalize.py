@@ -67,6 +67,7 @@ def extract(result: Dict[str, Any]) -> Dict[str, Any]:
             "completion_pct": completion,
             "overall_risk_level": overall_risk,
             "risk_profile": (diligence or {}).get("risk_profile", []),
+            "ai_findings": (diligence or {}).get("ai_findings", []),
         },
         "red_flags": red_flags,
         "comparables": comparables,

@@ -199,7 +199,14 @@ def evaluate(store, deal_id: str, user_id: Optional[str] = None) -> Dict[str, An
     env = orchestrator.invoke(_orchestrator_payload(deal))
     if not env["ok"]:
         raise RuntimeError(f"evaluation failed: {env['error']['message']}")
-    deal.last_evaluation = env["result"]
+    result = env["result"]
+    # Carry the AI-extracted findings (kept on the checklist) into the result so
+    # the report can render a comprehensive due-diligence section, not just the
+    # signal-derived red flags.
+    ai_findings = (deal.checklist or {}).get("ai_findings")
+    if ai_findings and isinstance(result.get("diligence"), dict):
+        result["diligence"]["ai_findings"] = ai_findings
+    deal.last_evaluation = result
     deal.updated_at = _now()
     if deal.stage in ("sourced", "screening"):
         deal.stage = "valuation"

@@ -109,12 +109,34 @@ def build_markdown(result: Dict[str, Any], options: Optional[Dict[str, Any]] = N
                      f"(size ×{m.get('size_factor')}, growth ×{m.get('growth_factor')}).")
         lines.append("")
 
-    if d["red_flags"]:
-        lines.append("## Key Risks (Diligence Red Flags)")
+    dl = d["diligence"]
+    ai_findings = dl.get("ai_findings") or []
+    risk_profile = [p for p in (dl.get("risk_profile") or []) if p.get("level") not in (None, "none")]
+    if d["red_flags"] or ai_findings or risk_profile:
+        lines.append("## Due Diligence")
         lines.append("")
-        for f in d["red_flags"]:
-            lines.append(f"- **[{str(f.get('severity','')).upper()}]** {f.get('category','')}: {f.get('label','')}")
-        lines.append("")
+        if dl.get("completion_pct") is not None and dl["completion_pct"] <= 0:
+            lines.append("_Checklist not yet worked through — items below are auto-detected from the "
+                         "financials and the uploaded document; verify before relying on the valuation._")
+            lines.append("")
+        if ai_findings:
+            lines.append("**Findings from the document** (auto-read — confirm each):")
+            lines.append("")
+            for f in ai_findings:
+                lines.append(f"- **[{str(f.get('severity','')).upper()}]** {f.get('category','')}: {f.get('finding','')}")
+            lines.append("")
+        if d["red_flags"]:
+            lines.append("**Red flags** (triggered by the deal's key facts):")
+            lines.append("")
+            for f in d["red_flags"]:
+                lines.append(f"- **[{str(f.get('severity','')).upper()}]** {f.get('category','')}: {f.get('label','')}")
+            lines.append("")
+        if risk_profile:
+            order = {"high": 3, "medium": 2, "low": 1}
+            lines.append("**Risk by area:** " + "; ".join(
+                f"{p['category']} ({p['level']}, {p.get('open_items', p.get('items',''))} open)"
+                for p in sorted(risk_profile, key=lambda p: -order.get(p.get('level'), 0))))
+            lines.append("")
 
     sens = d["sensitivity"].get("discount_rate") if d["sensitivity"] else None
     if sens:
@@ -137,6 +159,64 @@ def build_markdown(result: Dict[str, Any], options: Optional[Dict[str, Any]] = N
 # ---------------------------------------------------------------------------
 def _esc(s: Any) -> str:
     return html.escape(str(s if s is not None else ""))
+
+
+def _diligence_section_html(d: Dict[str, Any]) -> str:
+    """A full due-diligence section: status, findings from the report, auto red
+    flags, and the area-by-area risk profile. Renders only the parts present."""
+    dl = d.get("diligence", {}) or {}
+    red_flags = d.get("red_flags", []) or []
+    ai_findings = dl.get("ai_findings", []) or []
+    risk_profile = [p for p in (dl.get("risk_profile") or []) if p.get("level") not in (None, "none")]
+    completion = dl.get("completion_pct")
+    overall = dl.get("overall_risk_level")
+
+    if not (red_flags or ai_findings or risk_profile or completion is not None):
+        return ""
+
+    parts = ["<h2>Due Diligence</h2>"]
+
+    status_bits = []
+    if completion is not None:
+        status_bits.append(f"Checklist completion: <strong>{_esc(completion)}%</strong>")
+    if overall:
+        status_bits.append(f"Overall risk: <strong>{_esc(str(overall).title())}</strong>")
+    if status_bits:
+        parts.append(f"<p class='note'>{' · '.join(status_bits)}</p>")
+    if completion is not None and completion <= 0:
+        parts.append("<p class='note'>The checklist has not been worked through yet — the items "
+                     "below are auto-detected from the financials and the uploaded document, and "
+                     "should be verified before relying on this valuation.</p>")
+
+    def _finding_list(title, sub, entries, label_key):
+        lis = []
+        for f in entries:
+            sev = str(f.get("severity", "")).lower()
+            color = _SEV_COLOR.get(sev, "#7F8C8D")
+            text = f.get(label_key) or f.get("finding") or f.get("label") or ""
+            lis.append(
+                f"<li><span class='badge' style='background:{color}'>{_esc(sev.upper() or '—')}</span>"
+                f"<span class='cat'>{_esc(f.get('category',''))}</span>{_esc(text)}</li>")
+        return (f"<h3>{title} <span class='sub'>{sub}</span></h3>"
+                f"<ul class='flags'>{''.join(lis)}</ul>") if lis else ""
+
+    parts.append(_finding_list("Findings from the document", "(auto-read from the uploaded report — confirm each)",
+                               ai_findings, "finding"))
+    parts.append(_finding_list("Red flags", "(triggered by the deal's key facts)", red_flags, "label"))
+
+    if risk_profile:
+        order = {"high": 3, "medium": 2, "low": 1}
+        rows = "".join(
+            f"<tr><td>{_esc(p.get('category',''))}</td>"
+            f"<td>{_esc(str(p.get('level','')).title())}</td>"
+            f"<td class='num'>{_esc(p.get('open_items', p.get('items','')))}</td></tr>"
+            for p in sorted(risk_profile, key=lambda p: -order.get(p.get('level'), 0)))
+        parts.append("<h3>Risk by area</h3>"
+                     "<table class='grid'><thead><tr><th>Area</th><th>Concern</th>"
+                     "<th style='text-align:right'>Open items</th></tr></thead>"
+                     f"<tbody>{rows}</tbody></table>")
+
+    return "\n".join(p for p in parts if p)
 
 
 def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None) -> str:
@@ -169,21 +249,8 @@ def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         f"<tr><td>{_esc(name)}</td><td class='num'>{_esc(val)}</td></tr>" for name, val in rows
     )
 
-    # Red flags
-    flags_html = ""
-    if d["red_flags"]:
-        items = []
-        for f in d["red_flags"]:
-            sev = str(f.get("severity", "")).lower()
-            color = _SEV_COLOR.get(sev, "#7F8C8D")
-            items.append(
-                f"<li><span class='badge' style='background:{color}'>{_esc(sev.upper())}</span>"
-                f"<span class='cat'>{_esc(f.get('category',''))}</span>{_esc(f.get('label',''))}</li>"
-            )
-        flags_html = (
-            "<h2>Key Risks <span class='sub'>(diligence red flags)</span></h2>"
-            f"<ul class='flags'>{''.join(items)}</ul>"
-        )
+    # --- Comprehensive Due Diligence section -------------------------------
+    flags_html = _diligence_section_html(d)
 
     # Comparables
     comps_html = ""

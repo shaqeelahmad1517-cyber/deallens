@@ -120,6 +120,7 @@ def _sections(result: Dict[str, Any]) -> Dict[str, Any]:
         "completion": d["diligence"].get("completion_pct"),
         "overall_risk": d["diligence"].get("overall_risk_level"),
         "risk_profile": d["diligence"].get("risk_profile", []),
+        "ai_findings": d["diligence"].get("ai_findings", []),
     }
 
 
@@ -140,6 +141,16 @@ def _diligence_lines(s: Dict[str, Any]) -> List[str]:
         else:
             lines.append(f"About {comp:.0f}% of the due-diligence checklist is complete — a "
                          "reasonably thorough look. Still confirm the critical items marked ★.")
+    findings = s.get("ai_findings") or []
+    if findings:
+        order = {"high": 3, "medium": 2, "low": 1}
+        fs = sorted(findings, key=lambda f: -order.get(str(f.get("severity", "")).lower(), 0))
+        lines.append("Reading the uploaded document, these points stood out to check — "
+                     "each is a lead to confirm, not a proven fact:")
+        # One line per finding (renderers wrap each as its own paragraph/bullet).
+        for f in fs:
+            lines.append(f"<em>{_esc(str(f.get('severity', '')).title())}</em> — "
+                         f"{_esc(f.get('category', ''))}: {_esc(f.get('finding', ''))}")
     prof = [p for p in (s.get("risk_profile") or []) if p.get("level") not in (None, "none")]
     if prof:
         order = {"high": 3, "medium": 2, "low": 1}
