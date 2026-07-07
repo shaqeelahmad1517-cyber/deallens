@@ -4,6 +4,28 @@ import pytest
 from documents import extract_from_rows, extract_from_text, invoke, parse_number
 
 
+def test_full_report_is_rejected_not_guessed():
+    """A long, prose-heavy document must refuse rather than emit garbage figures."""
+    lines = ["General Mills Annual Report and narrative discussion."] * 250
+    lines.append("For net sales by product, please see Note 17")
+    r = extract_from_text("\n".join(lines))
+    assert r["financials"] == {}
+    assert r.get("reliable") is False
+    assert "full report" in r["warnings"][0].lower()
+
+
+def test_absurd_figure_is_rejected():
+    r = extract_from_text("Total revenue 20,094.2\nInterest 12,000,000,000,000,000,000")
+    assert r.get("reliable") is False
+    assert r["financials"] == {}
+
+
+def test_clean_statement_still_reliable():
+    r = extract_from_text("Total revenue 4,200,000\nNet income 520,000")
+    assert r.get("reliable") is True
+    assert r["financials"]["revenue"] == 4_200_000
+
+
 # ---------------------------------------------------------------------------
 # Number parsing
 # ---------------------------------------------------------------------------

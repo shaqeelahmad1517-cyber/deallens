@@ -223,6 +223,37 @@ def extract_from_pairs(pairs: List[Tuple[str, Optional[float]]]) -> Dict[str, An
         elif label:
             unmatched.append(label)
 
+    # --- Reliability guard -------------------------------------------------
+    # This extractor matches line-item LABELS in a *clean statement*. Fed a full
+    # annual report (dozens of prose pages), it grabs footnote numbers, mis-reads
+    # the scale from stray words like "billion", and collides fields — producing
+    # nonsense (the "$32 quadrillion" bug). Detect those conditions and refuse,
+    # rather than return a plausible-looking but wrong number.
+    _ABSURD = 2e12  # no single line item (revenue/NI/assets) realistically exceeds ~$2T
+    absurd = [k for k, v in financials.items() if abs(v) > _ABSURD]
+    assets_eq_liab = (
+        financials.get("total_assets") is not None
+        and financials.get("total_assets") == financials.get("total_liabilities")
+    )
+    looks_like_report = len(pairs) > 200  # a clean statement is short; a report is thousands of lines
+    if absurd or assets_eq_liab or looks_like_report:
+        return {
+            "financials": {},
+            "line_items": [],
+            "adjustment_candidates": [],
+            "unmatched": [],
+            "fields_found": 0,
+            "scale": scale,
+            "reliable": False,
+            "warnings": [
+                "This looks like a full report or narrative document, not a single "
+                "financial statement. Automatic label-reading is unreliable here, so no "
+                "figures were extracted. For a full annual report use “Read full "
+                "report (AI)”; otherwise paste just the income statement / balance "
+                "sheet, or upload a clean CSV/Excel statement."
+            ],
+        }
+
     warnings: List[str] = []
     if scale_name:
         warnings.append(f"Figures appear to be stated in {scale_name} — scaled by {int(scale):,}. Verify.")
@@ -237,6 +268,7 @@ def extract_from_pairs(pairs: List[Tuple[str, Optional[float]]]) -> Dict[str, An
         "unmatched": unmatched,
         "fields_found": len(financials),
         "scale": scale,
+        "reliable": True,
         "warnings": warnings,
     }
 

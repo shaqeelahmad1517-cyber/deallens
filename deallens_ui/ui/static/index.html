@@ -484,8 +484,13 @@ function _fillFromIngest(env){
   const map={revenue:'f_revenue',net_income:'f_ni',owner_compensation:'f_owner',interest:'f_int',taxes:'f_tax',depreciation:'f_dep',amortization:'f_amort',total_assets:'f_assets',total_liabilities:'f_liab'};
   let n=0;
   for(const [k,id] of Object.entries(map)){ if(f[k]!=null && $(id)){ $(id).value=f[k]; n++; } }
-  const warn=(env.result.warnings||[]).length;
-  $('f_extract_msg').textContent=`Filled ${n} field${n===1?'':'s'}`+(warn?` · ${warn} warning(s) — check Revenue/Net income`:'')+'. Review before creating.';
+  const warns=env.result.warnings||[];
+  if(n===0 && warns.length){
+    // e.g. a full report was rejected by the reliability guard — show the guidance.
+    $('f_extract_msg').innerHTML='<span style="color:#b9770e">'+warns[0].replace(/</g,'&lt;')+'</span>';
+  } else {
+    $('f_extract_msg').textContent=`Filled ${n} field${n===1?'':'s'}`+(warns.length?` · ${warns.length} warning(s) — check Revenue/Net income`:'')+'. Review before creating.';
+  }
   _autoFitSize();
 }
 
