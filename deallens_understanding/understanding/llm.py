@@ -139,7 +139,7 @@ def _anthropic(prompt: str) -> Dict[str, Any]:  # pragma: no cover - network
         "https://api.anthropic.com/v1/messages",
         {"x-api-key": key, "anthropic-version": "2023-06-01",
          "content-type": "application/json"},
-        {"model": model_name(), "max_tokens": 2000,
+        {"model": model_name(), "max_tokens": 2000, "temperature": 0,
          "messages": [{"role": "user", "content": prompt}]},
     )
     text = "".join(block.get("text", "") for block in out.get("content", []))
