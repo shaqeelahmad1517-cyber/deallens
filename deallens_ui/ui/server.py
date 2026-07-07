@@ -137,7 +137,8 @@ def handle_api(method: str, path: str, body: Optional[Dict[str, Any]],
     if sub == ["meta"]:
         return 200, _meta(), "application/json"
     if sub == ["health"]:
-        return 200, {"ok": True, "status": "healthy", "service": "deallens"}, "application/json"
+        return 200, {"ok": True, "status": "healthy", "service": "deallens",
+                     "build": "2026-07-07-report-guard"}, "application/json"
     if sub == ["manifests"]:
         return 200, {"ok": True, "manifests": _manifests()}, "application/json"
     if sub and sub[0] == "auth":
