@@ -280,6 +280,13 @@ def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             f"<tbody>{srows}</tbody></table>"
         )
 
+    edr = d.get("effective_discount_rate")
+    cost_note_html = (
+        f"<p class='note'>Income methods use an effective discount rate of "
+        f"{_pct(edr, 100)} — {'public-company' if edr and edr <= 0.12 else 'small-business'} "
+        f"cost of capital.</p>" if edr else ""
+    )
+
     completion = d["diligence"].get("completion_pct")
     completion_chip = (
         f"<div class='chip'><div class='k'>Diligence</div><div class='v'>{_esc(completion)}% complete</div></div>"
@@ -347,6 +354,7 @@ def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
   <h2>Valuation Approaches</h2>
   <table><thead><tr><th>Approach</th><th style="text-align:right">Result</th></tr></thead>
   <tbody>{approach_rows}</tbody></table>
+  {cost_note_html}
 
   {comps_html}
   {flags_html}

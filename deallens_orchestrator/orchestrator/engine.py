@@ -19,6 +19,35 @@ ENGINE_VERSION = "1.0.0"
 
 _GROWTH_FROM_TREND = {"growing": "growing", "flat": "flat", "declining": "declining"}
 
+# Public/large, stable, liquid companies have a far lower cost of capital than the
+# small-business default (~20%). Applying the SMB rate to a mega-cap badly
+# under-values its DCF and capitalization, so Public-tier deals default to these.
+_PUBLIC_INCOME = {
+    "discount_rate": 0.08,      # ~public cost of capital vs 0.20 SMB default
+    "growth_rate": 0.03,        # mature near-term FCF growth
+    "terminal_growth": 0.025,   # ~long-run nominal GDP
+    "long_term_growth": 0.025,  # used by capitalization of earnings
+}
+
+
+def _income_for_tier(tier: str, provided: Optional[Dict[str, Any]]):
+    """Choose income assumptions for the tier. Explicit user values always win.
+
+    Returns (income_dict_or_None, cost_of_capital_basis).
+    """
+    provided = {k: v for k, v in (provided or {}).items() if v is not None}
+    if tier == "public":
+        merged = dict(_PUBLIC_INCOME)
+        merged.update(provided)         # any user-supplied field overrides the default
+        basis = {"tier": "public", "discount_rate": merged["discount_rate"],
+                 "note": "Public-company cost of capital applied (large, stable, liquid — "
+                         "a much lower discount rate than a small private business)."}
+        return merged, basis
+    basis = {"tier": tier or "smb", "discount_rate": provided.get("discount_rate", 0.20),
+             "note": "Small-business cost of capital (higher risk and illiquidity → higher "
+                     "discount rate)."}
+    return (provided or None), basis
+
 
 def _load_engines():
     """Import the three sibling primitives; raise a clear error if missing."""
@@ -118,9 +147,15 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
         deal["market"] = market
     if red_flags:
         deal["risk_flags"] = red_flags
-    for k in ("income", "weights", "enabled_approaches"):
+    for k in ("weights", "enabled_approaches"):
         if payload.get(k) is not None:
             deal[k] = payload[k]
+
+    # Tier-aware cost of capital (Public tier -> ~8%; SMB -> engine's 20% default).
+    tier = str((comp_query or {}).get("tier", "")).lower() if comp_query else ""
+    income, cost_of_capital = _income_for_tier(tier, payload.get("income"))
+    if income:
+        deal["income"] = income
 
     val_env = valuation_engine.invoke(deal)
     steps["valuation"] = {"ok": val_env["ok"]}
@@ -152,6 +187,7 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "diligence": diligence_result,
         "comparables": comparables_result,
         "valuation": valuation_result,
+        "assumptions": {"cost_of_capital": cost_of_capital},
         "recommendation": recommendation,
         "disclaimer": (
             "Decision-support only. Aggregates user-supplied data through standard "

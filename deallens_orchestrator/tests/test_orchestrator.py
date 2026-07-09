@@ -27,6 +27,28 @@ def _full_payload(**overrides):
     return p
 
 
+def test_public_tier_uses_low_cost_of_capital():
+    # Same financials, public tier -> ~8% discount rate and a much higher DCF than SMB.
+    fin = {"revenue": 20094e6, "net_income": 2594e6, "interest": 382e6,
+           "taxes": 612e6, "depreciation": 547e6}
+    base = {"target_name": "Mega", "financials": fin, "checklist": {"business_type": "general"}}
+    smb = orchestrator.invoke(dict(base, comparables={"sector": "consumer_staples", "metric": "ebitda", "tier": "smb"}))["result"]
+    pub = orchestrator.invoke(dict(base, comparables={"sector": "consumer_staples", "metric": "ebitda", "tier": "public"}))["result"]
+    assert pub["assumptions"]["cost_of_capital"]["discount_rate"] == 0.08
+    assert smb["assumptions"]["cost_of_capital"]["discount_rate"] == 0.20
+    # Lower discount rate -> higher DCF.
+    assert pub["valuation"]["approaches"]["income"]["dcf"]["value"] > \
+           smb["valuation"]["approaches"]["income"]["dcf"]["value"] * 2
+
+
+def test_explicit_income_overrides_tier_default():
+    fin = {"revenue": 20094e6, "net_income": 2594e6, "depreciation": 547e6}
+    env = orchestrator.invoke({"target_name": "Mega", "financials": fin,
+                               "comparables": {"sector": "consumer_staples", "metric": "ebitda", "tier": "public"},
+                               "income": {"discount_rate": 0.11}})
+    assert env["result"]["assumptions"]["cost_of_capital"]["discount_rate"] == 0.11
+
+
 def test_full_pipeline_ok():
     env = orchestrator.invoke(_full_payload())
     assert env["ok"] is True

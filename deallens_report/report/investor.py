@@ -121,7 +121,22 @@ def _sections(result: Dict[str, Any]) -> Dict[str, Any]:
         "overall_risk": d["diligence"].get("overall_risk_level"),
         "risk_profile": d["diligence"].get("risk_profile", []),
         "ai_findings": d["diligence"].get("ai_findings", []),
+        "cost_note": _cost_of_capital_note(d.get("effective_discount_rate")),
     }
+
+
+def _cost_of_capital_note(edr):
+    """Plain-English explanation of the discount rate used."""
+    if not edr:
+        return None
+    pct = edr * 100
+    if pct <= 12:
+        return (f"We discounted future earnings at about {pct:.0f}% a year — the rate suited to "
+                "a large, stable, publicly-traded company, whose earnings are relatively "
+                "predictable and so are discounted gently.")
+    return (f"We discounted future earnings at about {pct:.0f}% a year — the rate suited to a "
+            "smaller private business, which is riskier and harder to sell, so its future "
+            "earnings are discounted more heavily.")
 
 
 def _diligence_lines(s: Dict[str, Any]) -> List[str]:
@@ -258,6 +273,9 @@ def build_investor_markdown(result: Dict[str, Any], options: Optional[Dict[str, 
     for a in s["approaches"]:
         L.append(f"- **{a['title']}.** {a['text']}")
     L.append("")
+    if s.get("cost_note"):
+        L.append(f"_{s['cost_note']}_")
+        L.append("")
     dl = _diligence_lines(s)
     if dl:
         L.append("## How thoroughly it's been checked")
@@ -327,6 +345,8 @@ def build_investor_html(result: Dict[str, Any], options: Optional[Dict[str, Any]
         risk_html = ("<p>No major red flags were entered. Note: that may just mean the "
                      "diligence checklist wasn't filled in — worth doing before you rely on this.</p>")
 
+    cost_html = f"<p class='note'>{_esc(s['cost_note'])}</p>" if s.get("cost_note") else ""
+
     dl = _diligence_lines(s)
     dilig_html = ""
     if dl:
@@ -380,6 +400,7 @@ def build_investor_html(result: Dict[str, Any], options: Optional[Dict[str, Any]
  <p>We valued the business a few different ways and blended them. When the methods roughly agree,
  you can be more confident in the answer.</p>
  {approach_html}
+ {cost_html}
 
  {dilig_html}
 
