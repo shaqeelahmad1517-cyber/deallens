@@ -407,8 +407,56 @@ class Handler(BaseHTTPRequestHandler):
             extra_headers["Set-Cookie"] = "deallens_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"
         self._send(status, payload, ctype, extra_headers)
 
+    def _serve_download(self):
+        """Generate a report (also saved to /data/reports) and stream it to the
+        browser as a file download."""
+        import urllib.parse as _up
+        token = self._token()
+        user = verify_token(token)
+        uid = user["id"] if user else None
+        if uid is None:
+            self._send(401, {"ok": False, "error": {"type": "Unauthorized", "message": "login required"}},
+                       "application/json")
+            return
+        raw_path, _, query = self.path.partition("?")
+        qs = {k: v[0] for k, v in _up.parse_qs(query).items()}
+        parts = [p for p in raw_path.split("/") if p]     # api deals <id> download
+        did = parts[2] if len(parts) >= 3 else ""
+        fmt = (qs.get("format") or "html").lower()
+        ext = {"html": "html", "md": "md", "markdown": "md", "docx": "docx"}.get(fmt, "html")
+        mime = {"html": "text/html", "md": "text/markdown",
+                "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}.get(ext, "application/octet-stream")
+        root = None if os.environ.get("DEALLENS_DB") else data_root()
+        opts = {"style": "plain"} if qs.get("style") == "plain" else None
+        env = _ws({"action": "report", "id": did, "format": fmt, "options": opts}, root, uid)
+        if not env.get("ok"):
+            self._send(400, env, "application/json")
+            return
+        try:
+            with open(env["result"]["path"], "rb") as fh:
+                data = fh.read()
+        except OSError as exc:
+            self._send(500, {"ok": False, "error": {"type": "IOError", "message": str(exc)}}, "application/json")
+            return
+        # Friendly filename from the deal's display name.
+        name = "report"
+        denv = _ws({"action": "get", "id": did}, root, uid)
+        if denv.get("ok"):
+            name = denv["result"].get("target_name") or "report"
+        if opts:
+            name += " (plain-English)"
+        safe = "".join(c if (c.isalnum() or c in " -_") else "_" for c in name).strip() or "report"
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", f'attachment; filename="{safe}.{ext}"')
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
-        if self.path.startswith("/api/"):
+        if self.path.startswith("/api/") and "/download" in self.path:
+            self._serve_download()
+        elif self.path.startswith("/api/"):
             self._dispatch("GET", None)
         else:
             self._serve_static(self.path)

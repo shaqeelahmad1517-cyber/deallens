@@ -677,10 +677,12 @@ async function openDeal(id){
     body+=`<h3>AI summary <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(auto-drafted — review before sharing)</span></h3>
       <button class="sm ghost" onclick="draftSummary('${id}')">✦ Draft summary</button>
       <div id="ai_summary" style="margin-top:10px;white-space:pre-wrap;font-size:14px;line-height:1.55;"></div>`;
-    body+=`<div class="row" style="margin-top:18px;">
-      <button class="sm" onclick="genReport('${id}','html')">Save HTML report</button>
-      <button class="sm ghost" onclick="genReport('${id}','docx')">Save Word report</button>
-      <button class="sm ghost" onclick="genReport('${id}','markdown')">Save Markdown</button></div>`;
+    body+=`<h3>Download report <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(saves to your computer)</span></h3>
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:8px;">
+      <button class="sm" onclick="downloadReport('${id}','html')">HTML</button>
+      <button class="sm ghost" onclick="downloadReport('${id}','docx')">Word</button>
+      <button class="sm ghost" onclick="downloadReport('${id}','markdown')">Markdown</button>
+      <button class="sm ghost" onclick="downloadReport('${id}','html','plain')">Plain-English (HTML)</button></div>`;
   }
   // --- Collaboration ---
   const isOwner = (d.my_role==='owner') || (ME && d.owner_id===ME.id) || !d.owner_id;
@@ -720,10 +722,15 @@ async function evaluate(id){
   if(!env.ok){toast('Error: '+env.error.message);return;}
   toast('Evaluated'); openDeal(id);
 }
-async function genReport(id,fmt){
-  const env=await api('POST','/api/deals/'+id+'/report',{format:fmt});
-  if(!env.ok){toast('Error: '+env.error.message);return;}
-  toast('Saved: '+env.result.path);
+function downloadReport(id,fmt,style){
+  // Auth rides on the HttpOnly session cookie; the server responds with
+  // Content-Disposition: attachment so the browser downloads instead of navigating.
+  let url='/api/deals/'+id+'/download?format='+encodeURIComponent(fmt);
+  if(style)url+='&style='+encodeURIComponent(style);
+  const a=document.createElement('a');
+  a.href=url; a.download='';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Preparing your download…');
 }
 function viewReport(id){ window.open('/api/deals/'+id+'/report','_blank'); }
 function viewPlainReport(id){ window.open('/api/deals/'+id+'/report?style=plain','_blank'); }
