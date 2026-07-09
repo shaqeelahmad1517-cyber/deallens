@@ -135,9 +135,16 @@ def run(payload: Dict[str, Any]) -> Dict[str, Any]:
     else:
         steps["comparables"] = {"ok": True, "skipped": True}
 
-    # Market resolution order: comparables -> explicit payload.market -> engine default.
-    if market is None and payload.get("market"):
-        market = payload["market"]
+    # Market resolution: an explicit user override (a typed multiple) always wins;
+    # else comparables; else an explicit payload.market; else the engine default.
+    override_market = payload.get("market")
+    if override_market and override_market.get("low_multiple") is not None:
+        market = dict(override_market)
+        if comparables_result is not None:
+            steps["comparables"]["overridden_by_user"] = True
+            warnings.append("Market multiple overridden by a user-supplied value.")
+    elif market is None and override_market:
+        market = override_market
 
     # ---- Step 3: valuation -------------------------------------------------
     deal: Dict[str, Any] = {"target_name": target, "financials": financials}

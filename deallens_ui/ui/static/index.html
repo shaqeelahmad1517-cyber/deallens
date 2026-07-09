@@ -683,6 +683,29 @@ async function openDeal(id){
       <button class="sm ghost" onclick="downloadReport('${id}','docx')">Word</button>
       <button class="sm ghost" onclick="downloadReport('${id}','markdown')">Markdown</button>
       <button class="sm ghost" onclick="downloadReport('${id}','html','plain')">Plain-English (HTML)</button></div>`;
+    // --- Advanced override panel ---
+    window._curMetric = (d.comparables && d.comparables.metric) || 'ebitda';
+    const opt=d.options||{}, oi=opt.income||{}, om=opt.market||{}, ow=opt.weights||{};
+    const effDisc=ev.valuation.effective_discount_rate, cm=ap.market||{};
+    const cur=`Currently: discount <strong>${effDisc?(effDisc*100).toFixed(1)+'%':'—'}</strong>, ${window._curMetric.toUpperCase()} multiple <strong>${cm.low_multiple?cm.low_multiple.toFixed(1)+'–'+cm.high_multiple.toFixed(1)+'×':'—'}</strong>.`;
+    body+=`<h3>⚙️ Adjust assumptions <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(advanced — overrides the automatic values)</span></h3>
+      <div class="card">
+      <div class="muted" style="margin-bottom:8px;">${cur} Leave a field blank to keep the automatic value.</div>
+      <div class="grid3">
+        ${field('Discount rate %','ov_disc',oi.discount_rate!=null?(oi.discount_rate*100):'','number')}
+        ${field(window._curMetric.toUpperCase()+' multiple low ×','ov_ml',om.low_multiple!=null?om.low_multiple:'','number')}
+        ${field(window._curMetric.toUpperCase()+' multiple high ×','ov_mh',om.high_multiple!=null?om.high_multiple:'','number')}
+      </div>
+      <div class="muted" style="margin:6px 0;">Method weights (optional — set all three; they're normalized):</div>
+      <div class="grid3">
+        ${field('Weight income','ov_wi',ow.income!=null?ow.income:'','number')}
+        ${field('Weight market','ov_wm',ow.market!=null?ow.market:'','number')}
+        ${field('Weight asset','ov_wa',ow.asset!=null?ow.asset:'','number')}
+      </div>
+      <div class="row" style="margin-top:10px;gap:8px;">
+        <button class="sm" onclick="applyOverrides('${id}')">Apply &amp; re-evaluate</button>
+        <button class="sm ghost" onclick="clearOverrides('${id}')">Reset to automatic</button>
+      </div></div>`;
   }
   // --- Collaboration ---
   const isOwner = (d.my_role==='owner') || (ME && d.owner_id===ME.id) || !d.owner_id;
@@ -721,6 +744,28 @@ async function evaluate(id){
   const env=await api('POST','/api/deals/'+id+'/evaluate',{});
   if(!env.ok){toast('Error: '+env.error.message);return;}
   toast('Evaluated'); openDeal(id);
+}
+async function applyOverrides(id){
+  const options={};
+  const disc=num('ov_disc');
+  if(disc!==undefined) options.income={discount_rate:disc/100};
+  const ml=num('ov_ml'), mh=num('ov_mh');
+  if(ml!==undefined && mh!==undefined) options.market={metric:(window._curMetric||'ebitda'),low_multiple:ml,high_multiple:mh};
+  else if(ml!==undefined || mh!==undefined){ toast('Enter BOTH a low and high multiple, or neither.'); return; }
+  const wi=num('ov_wi'), wm=num('ov_wm'), wa=num('ov_wa');
+  if(wi!==undefined||wm!==undefined||wa!==undefined) options.weights={income:wi||0,market:wm||0,asset:wa||0};
+  const env=await api('PATCH','/api/deals/'+id,{options});
+  if(!env.ok){toast('Error: '+env.error.message);return;}
+  toast('Applied — re-evaluating…');
+  await api('POST','/api/deals/'+id+'/evaluate',{});
+  openDeal(id);
+}
+async function clearOverrides(id){
+  const env=await api('PATCH','/api/deals/'+id,{options:{}});
+  if(!env.ok){toast('Error: '+env.error.message);return;}
+  toast('Reset to automatic — re-evaluating…');
+  await api('POST','/api/deals/'+id+'/evaluate',{});
+  openDeal(id);
 }
 function downloadReport(id,fmt,style){
   // Auth rides on the HttpOnly session cookie; the server responds with

@@ -49,6 +49,33 @@ def test_explicit_income_overrides_tier_default():
     assert env["result"]["assumptions"]["cost_of_capital"]["discount_rate"] == 0.11
 
 
+def test_user_multiple_override_wins_over_comparables():
+    fin = {"revenue": 20094e6, "net_income": 2594e6, "depreciation": 547e6}
+    base = {"target_name": "Mega", "financials": fin,
+            "comparables": {"sector": "consumer_staples", "metric": "ebitda", "tier": "public"}}
+    auto = orchestrator.invoke(base)["result"]
+    over = orchestrator.invoke(dict(base, market={"metric": "ebitda", "low_multiple": 20, "high_multiple": 25}))["result"]
+    # The override lifts the market multiple well above the comps band (12-16x).
+    assert over["valuation"]["approaches"]["market"]["low_multiple"] == 20
+    assert over["steps"]["comparables"]["overridden_by_user"] is True
+    assert over["valuation"]["approaches"]["market"]["low"] > auto["valuation"]["approaches"]["market"]["low"]
+
+
+def test_weights_override_shifts_blend():
+    fin = {"revenue": 20094e6, "net_income": 2594e6, "depreciation": 547e6}
+    base = {"target_name": "Mega", "financials": fin,
+            "comparables": {"sector": "consumer_staples", "metric": "ebitda", "tier": "public"}}
+    market_heavy = orchestrator.invoke(dict(base, weights={"income": 0, "market": 1, "asset": 0}))["result"]
+    income_heavy = orchestrator.invoke(dict(base, weights={"income": 1, "market": 0, "asset": 0}))["result"]
+    mh = market_heavy["recommendation"]["range"]["mid"]
+    ih = income_heavy["recommendation"]["range"]["mid"]
+    # Weights demonstrably change the blend, and a fully market-weighted result
+    # sits inside the market comps' own low-high band.
+    assert mh != ih
+    mk = market_heavy["valuation"]["approaches"]["market"]
+    assert mk["low"] <= mh <= mk["high"]
+
+
 def test_full_pipeline_ok():
     env = orchestrator.invoke(_full_payload())
     assert env["ok"] is True
