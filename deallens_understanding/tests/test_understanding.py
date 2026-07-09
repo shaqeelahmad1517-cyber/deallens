@@ -128,9 +128,22 @@ def test_model_and_provider_defaults(monkeypatch):
 
 
 def test_prompt_truncates_long_documents():
-    huge = "x" * 200_000
+    huge = "x" * 300_000
     p = llm.build_prompt(huge)
-    assert "truncated" in p and len(p) < 200_000
+    assert "truncated" in p and len(p) < 170_000
+
+
+def test_prompt_includes_statements_buried_deep_in_report():
+    # Simulate a big annual report: ~190k chars of front matter, THEN the
+    # statements — well past the head-window cut. They must still reach the model.
+    front = "Front matter narrative and risk factors. " * 5000   # ~205k chars
+    statements = ("CONSOLIDATED BALANCE SHEET\nTotal assets 100\n"
+                  "Total liabilities 40\nCONSOLIDATED STATEMENTS OF INCOME\nTotal revenues 900\n")
+    text = front + statements + "footnotes " * 2000
+    p = llm.build_prompt(text)
+    assert "CONSOLIDATED BALANCE SHEET" in p
+    assert "CONSOLIDATED STATEMENTS OF INCOME" in p
+    assert "Total revenues 900" in p
 
 
 # ---------------------------------------------------------------------------

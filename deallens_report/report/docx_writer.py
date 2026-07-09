@@ -110,6 +110,14 @@ def write_docx(result: Dict[str, Any], path: str, options: Optional[Dict[str, An
         c[0].text = "Asset — Net Asset Value"
         c[1].text = _money(ap["asset"].get("value"))
 
+    edr = d.get("effective_discount_rate")
+    if edr:
+        basis = "public-company" if edr <= 0.12 else "small-business"
+        note = doc.add_paragraph(
+            f"Income methods use an effective discount rate of {edr*100:.1f}% — {basis} cost of capital.")
+        note.runs[0].italic = True
+        note.runs[0].font.size = Pt(9)
+
     # Comparables
     if d["comparables"]:
         c = d["comparables"]
@@ -121,14 +129,49 @@ def write_docx(result: Dict[str, Any], path: str, options: Optional[Dict[str, An
             f"(size ×{m.get('size_factor')}, growth ×{m.get('growth_factor')})."
         )
 
-    # Red flags
-    if d["red_flags"]:
-        doc.add_heading("Key Risks (Diligence Red Flags)", level=1)
-        for f in d["red_flags"]:
-            doc.add_paragraph(
-                f"[{str(f.get('severity','')).upper()}] {f.get('category','')}: {f.get('label','')}",
-                style="List Bullet",
-            )
+    # --- Comprehensive Due Diligence -------------------------------------
+    dl = d.get("diligence", {}) or {}
+    ai_findings = dl.get("ai_findings") or []
+    risk_profile = [p for p in (dl.get("risk_profile") or []) if p.get("level") not in (None, "none")]
+    red_flags = d.get("red_flags") or []
+    if ai_findings or red_flags or risk_profile:
+        doc.add_heading("Due Diligence", level=1)
+        comp = dl.get("completion_pct")
+        if comp is not None and comp <= 0:
+            note = doc.add_paragraph(
+                "Checklist not yet worked through — the items below are auto-detected from "
+                "the financials and the uploaded document, and should be verified before "
+                "relying on this valuation.")
+            note.runs[0].italic = True
+
+        if ai_findings:
+            doc.add_heading("Findings from the document", level=2)
+            doc.add_paragraph("Auto-read from the uploaded report — confirm each.").runs[0].italic = True
+            for f in ai_findings:
+                doc.add_paragraph(
+                    f"[{str(f.get('severity','')).upper()}] {f.get('category','')}: "
+                    f"{f.get('finding') or f.get('label','')}", style="List Bullet")
+
+        if red_flags:
+            doc.add_heading("Red flags", level=2)
+            doc.add_paragraph("Triggered by the deal's key facts.").runs[0].italic = True
+            for f in red_flags:
+                doc.add_paragraph(
+                    f"[{str(f.get('severity','')).upper()}] {f.get('category','')}: {f.get('label','')}",
+                    style="List Bullet")
+
+        if risk_profile:
+            order = {"high": 3, "medium": 2, "low": 1}
+            doc.add_heading("Risk by area", level=2)
+            rt = doc.add_table(rows=1, cols=3)
+            rt.style = "Light Grid Accent 1"
+            for i, h in enumerate(("Area", "Concern", "Open items")):
+                rt.rows[0].cells[i].text = h
+            for p in sorted(risk_profile, key=lambda p: -order.get(p.get("level"), 0)):
+                cells = rt.add_row().cells
+                cells[0].text = str(p.get("category", ""))
+                cells[1].text = str(p.get("level", "")).title()
+                cells[2].text = str(p.get("open_items", p.get("items", "")))
 
     # Sensitivity
     sens = d["sensitivity"].get("discount_rate") if d["sensitivity"] else None

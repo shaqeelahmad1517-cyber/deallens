@@ -20,7 +20,39 @@ from typing import Any, Dict, Optional
 
 # Fields the model is asked to return. Kept aligned with the documents extractor
 # (financials) and the diligence engine's auto-flag signals (signals).
-_MAX_CHARS = 120_000  # ~30k tokens; long enough for a full annual report section
+_MAX_CHARS = 150_000  # ~37k tokens
+
+# Markers for the financial-statements section. In a big annual report the
+# statements can sit hundreds of pages in — past a naive head-of-document cut —
+# so we locate them and center the excerpt there.
+_STATEMENT_MARKERS = (
+    "consolidated balance sheet", "consolidated statements of income",
+    "consolidated statements of operations", "consolidated statements of earnings",
+    "consolidated statement of earnings", "consolidated statements of cash flow",
+    "consolidated statement of financial position", "consolidated statements of financial position",
+    "consolidated statement of operations", "statements of comprehensive income",
+)
+
+
+def _relevant_excerpt(text: str, max_chars: int) -> str:
+    """Return an excerpt that includes the financial statements.
+
+    Short docs pass through. For long docs, if the statements sit beyond the head
+    window, keep a little front matter (company name, 'in millions' scale) and then
+    jump to the statements so the model actually sees the numbers.
+    """
+    if len(text) <= max_chars:
+        return text
+    low = text.lower()
+    hits = sorted(p for p in (low.find(m) for m in _STATEMENT_MARKERS) if p >= 0)
+    if hits and hits[0] > max_chars - 40_000:
+        head_len = 12_000
+        start = max(0, hits[0] - 3_000)
+        window = text[start:start + (max_chars - head_len - 200)]
+        return (text[:head_len]
+                + "\n\n[...front matter omitted; jumping to the financial statements...]\n\n"
+                + window)
+    return text[:max_chars]
 
 _INSTRUCTION = """You are a meticulous financial due-diligence analyst. Read the \
 company document below and extract structured facts. Return ONLY a JSON object \
@@ -71,12 +103,12 @@ DOCUMENT:
 
 
 def build_prompt(text: str) -> str:
-    """Assemble the extraction prompt, truncating very long documents."""
+    """Assemble the extraction prompt, focusing long documents on the statements."""
     doc = text or ""
-    truncated = len(doc) > _MAX_CHARS
-    if truncated:
-        doc = doc[:_MAX_CHARS] + "\n[...document truncated for length...]"
-    return _INSTRUCTION + doc
+    excerpt = _relevant_excerpt(doc, _MAX_CHARS)
+    if len(doc) > len(excerpt):
+        excerpt += "\n[...document truncated for length...]"
+    return _INSTRUCTION + excerpt
 
 
 def provider() -> str:
