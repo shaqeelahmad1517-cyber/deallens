@@ -22,37 +22,56 @@ from typing import Any, Dict, Optional
 # (financials) and the diligence engine's auto-flag signals (signals).
 _MAX_CHARS = 150_000  # ~37k tokens
 
-# Markers for the financial-statements section. In a big annual report the
-# statements can sit hundreds of pages in — past a naive head-of-document cut —
-# so we locate them and center the excerpt there.
-_STATEMENT_MARKERS = (
+# Anchors that appear IN the actual financial statements (headings + total lines).
+# We locate the densest cluster of these — the real statements section — rather
+# than trusting the first mention, which is usually a table-of-contents/prose ref.
+_STATEMENT_ANCHORS = (
     "consolidated balance sheet", "consolidated statements of income",
     "consolidated statements of operations", "consolidated statements of earnings",
     "consolidated statement of earnings", "consolidated statements of cash flow",
     "consolidated statement of financial position", "consolidated statements of financial position",
     "consolidated statement of operations", "statements of comprehensive income",
+    "total assets", "total liabilities", "total current liabilities",
+    "total current assets", "total stockholders", "total shareholders",
+    "total equity", "total revenues", "net sales",
+    "net cash provided by operating", "cash and cash equivalents",
 )
 
 
 def _relevant_excerpt(text: str, max_chars: int) -> str:
     """Return an excerpt that includes the financial statements.
 
-    Short docs pass through. For long docs, if the statements sit beyond the head
-    window, keep a little front matter (company name, 'in millions' scale) and then
-    jump to the statements so the model actually sees the numbers.
+    Short docs pass through. For long docs we find the window that captures the most
+    statement anchors (the real statements section — headings plus total lines) and
+    keep a little front matter (company name, 'in millions' scale) ahead of it, so
+    the model reliably sees the balance sheet AND the income statement.
     """
+    import bisect
+    import re
     if len(text) <= max_chars:
         return text
     low = text.lower()
-    hits = sorted(p for p in (low.find(m) for m in _STATEMENT_MARKERS) if p >= 0)
-    if hits and hits[0] > max_chars - 40_000:
-        head_len = 12_000
-        start = max(0, hits[0] - 3_000)
-        window = text[start:start + (max_chars - head_len - 200)]
-        return (text[:head_len]
-                + "\n\n[...front matter omitted; jumping to the financial statements...]\n\n"
-                + window)
-    return text[:max_chars]
+    positions = sorted(m.start() for a in _STATEMENT_ANCHORS for m in re.finditer(re.escape(a), low))
+    if not positions:
+        return text[:max_chars]
+
+    head_len = 12_000
+    win = max_chars - head_len - 200
+    # Slide a window of size `win` and pick the start (an anchor position) that
+    # captures the most anchors — that's where the statements are packed together.
+    best_start, best_count = positions[0], 0
+    for p in positions:
+        c = bisect.bisect_right(positions, p + win) - bisect.bisect_left(positions, p)
+        if c > best_count:
+            best_count, best_start = c, p
+
+    start = max(0, best_start - 3_000)
+    if start <= head_len:                     # the cluster is already up front
+        return text[:max_chars]
+    window = text[start:start + win]
+    return (text[:head_len]
+            + "\n\n[...front matter omitted; jumping to the financial statements...]\n\n"
+            + window)
 
 _INSTRUCTION = """You are a meticulous financial due-diligence analyst. Read the \
 company document below and extract structured facts. Return ONLY a JSON object \
