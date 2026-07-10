@@ -15,6 +15,34 @@ def test_templates_exist():
     assert set(available_templates()) == {"general", "smb", "saas", "retail"}
 
 
+def test_ai_findings_become_provisional_flags():
+    cl = Checklist.from_dict({"business_type": "general", "signals": {},
+                              "ai_findings": [
+                                  {"category": "Financial", "finding": "Material weakness.", "severity": "high"},
+                                  {"category": "Operations", "finding": "Commodity inflation.", "severity": "medium"}]})
+    r = run(cl)
+    prov = r["provisional_flags"]
+    assert {p["category"] for p in prov} == {"Financial", "Operations"}
+    assert all(p["provisional"] and p["source"] == "ai_finding" for p in prov)
+    # Provisional flags carry explicit reduced deltas and reach the valuation adapter.
+    vflags = to_valuation_risk_flags(r)
+    fin = next(f for f in vflags if f["category"] == "Financial")
+    assert fin["multiple_discount"] == 0.06 and fin["discount_rate_premium"] == 0.015
+
+
+def test_ai_finding_deduped_against_confirmed_signal():
+    # A customer-concentration signal already fires; the AI 'Customers' finding
+    # must NOT add a second (double-count) flag in the same area.
+    cl = Checklist.from_dict({"business_type": "general",
+                              "signals": {"top_customer_pct": 40},
+                              "ai_findings": [{"category": "Customers", "finding": "Concentration.", "severity": "high"},
+                                              {"category": "Debt", "finding": "High leverage.", "severity": "medium"}]})
+    r = run(cl)
+    cats = {p["category"] for p in r["provisional_flags"]}
+    assert "Customers" not in cats          # deduped against the signal
+    assert "Financial" in cats              # 'Debt' normalized to Financial, kept
+
+
 def test_typed_templates_extend_general():
     assert len(get_template("saas")) > len(get_template("general"))
 

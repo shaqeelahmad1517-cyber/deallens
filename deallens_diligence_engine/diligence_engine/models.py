@@ -69,6 +69,9 @@ class Checklist:
     items: List[ItemState] = field(default_factory=list)
     # Structured facts that drive automatic red-flag detection.
     signals: Dict[str, Any] = field(default_factory=dict)
+    # AI-extracted narrative findings (category/finding/severity); applied to the
+    # valuation at a provisional (reduced) weight until a human confirms them.
+    ai_findings: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -91,4 +94,5 @@ class Checklist:
             business_type=d.get("business_type", "general"),
             items=items,
             signals=dict(d.get("signals") or {}),
+            ai_findings=list(d.get("ai_findings") or []),
         )

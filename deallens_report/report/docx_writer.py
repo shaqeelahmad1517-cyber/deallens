@@ -146,7 +146,8 @@ def write_docx(result: Dict[str, Any], path: str, options: Optional[Dict[str, An
 
         if ai_findings:
             doc.add_heading("Findings from the document", level=2)
-            doc.add_paragraph("Auto-read from the uploaded report — confirm each.").runs[0].italic = True
+            doc.add_paragraph("Auto-read from the uploaded report — these provisionally reduce the "
+                              "value; confirm each on the checklist for full weight.").runs[0].italic = True
             for f in ai_findings:
                 doc.add_paragraph(
                     f"[{str(f.get('severity','')).upper()}] {f.get('category','')}: "

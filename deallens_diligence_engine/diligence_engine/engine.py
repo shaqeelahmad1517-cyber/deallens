@@ -19,6 +19,43 @@ ENGINE_VERSION = "1.0.0"
 
 _SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3}
 
+# Provisional (reduced) valuation impact for UNCONFIRMED AI findings — about half
+# the confirmed-flag defaults. Confirming a finding on the checklist applies full
+# weight. Kept modest so the AI's first-pass reading nudges, not dominates.
+_PROV_MULTIPLE_DISCOUNT = {"low": 0.01, "medium": 0.025, "high": 0.06}
+_PROV_RATE_PREMIUM = {"low": 0.0025, "medium": 0.0075, "high": 0.015}
+# Normalize AI finding categories onto the diligence/signal category vocabulary
+# so we can dedupe a finding against a confirmed signal in the same area.
+_CAT_NORMAL = {"debt": "Financial", "leverage": "Financial", "suppliers": "Operations",
+               "supplier": "Operations", "supply chain": "Operations", "governance": "Legal",
+               "management": "People", "product": "Operations", "environmental": "Legal"}
+
+
+def _provisional_flags(ai_findings, taken_categories):
+    """Convert unconfirmed AI findings into provisional risk flags, one per area,
+    skipping any area already covered by a confirmed signal/item flag."""
+    seen = set()
+    out: List[Dict[str, object]] = []
+    for f in sorted(ai_findings or [],
+                    key=lambda x: -_SEVERITY_RANK.get(str(x.get("severity", "")).lower(), 0)):
+        sev = str(f.get("severity", "medium")).lower()
+        if sev not in _PROV_MULTIPLE_DISCOUNT:
+            sev = "medium"
+        raw = str(f.get("category", "General")).strip()
+        cat = _CAT_NORMAL.get(raw.lower(), raw.title() if raw else "General")
+        if cat in taken_categories or cat in seen:
+            continue                              # already counted (don't double-dip)
+        seen.add(cat)
+        text = str(f.get("finding") or f.get("label") or "").strip()
+        out.append({
+            "label": "(from report, unconfirmed) " + (text[:160] or cat),
+            "severity": sev, "category": cat, "source": "ai_finding",
+            "concern": "ai:" + cat, "provisional": True,
+            "multiple_discount": _PROV_MULTIPLE_DISCOUNT[sev],
+            "discount_rate_premium": _PROV_RATE_PREMIUM[sev],
+        })
+    return out
+
 
 def _merge_flags(flags: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """Dedupe flags, keeping the highest severity per concern.
@@ -120,6 +157,10 @@ def run(checklist: Checklist) -> Dict[str, object]:
     ]
     red_flags = _merge_flags(signal_flags + item_flags)
 
+    # Unconfirmed AI findings -> provisional flags (skip areas already flagged).
+    provisional_flags = _provisional_flags(
+        checklist.ai_findings, {f["category"] for f in red_flags})
+
     return {
         "engine": ENGINE_NAME,
         "version": ENGINE_VERSION,
@@ -131,10 +172,12 @@ def run(checklist: Checklist) -> Dict[str, object]:
             "overall_risk_score": overall_avg,
             "overall_risk_level": overall_level,
             "red_flag_count": len(red_flags),
+            "provisional_flag_count": len(provisional_flags),
         },
         "completion_pct": completion_pct,
         "risk_profile": risk_profile,
         "red_flags": red_flags,
+        "provisional_flags": provisional_flags,
         "items": items_out,
         "disclaimer": (
             "Decision-support only. A structured aid to investigation, not "
@@ -149,10 +192,16 @@ def to_valuation_risk_flags(result: Dict[str, object]) -> List[Dict[str, str]]:
     This is the interlock. Pass the output straight into the valuation
     engine's input under the ``risk_flags`` key.
     """
-    return [
-        {"label": f["label"], "severity": f["severity"], "category": f["category"]}
-        for f in result.get("red_flags", [])
-    ]
+    out: List[Dict[str, str]] = []
+    for f in list(result.get("red_flags", [])) + list(result.get("provisional_flags", [])):
+        flag = {"label": f["label"], "severity": f["severity"], "category": f["category"]}
+        # Provisional AI-finding flags carry explicit (reduced) deltas; pass them through.
+        if f.get("multiple_discount") is not None:
+            flag["multiple_discount"] = f["multiple_discount"]
+        if f.get("discount_rate_premium") is not None:
+            flag["discount_rate_premium"] = f["discount_rate_premium"]
+        out.append(flag)
+    return out
 
 
 class DiligenceEngine:

@@ -120,7 +120,7 @@ def build_markdown(result: Dict[str, Any], options: Optional[Dict[str, Any]] = N
                          "financials and the uploaded document; verify before relying on the valuation._")
             lines.append("")
         if ai_findings:
-            lines.append("**Findings from the document** (auto-read — confirm each):")
+            lines.append("**Findings from the document** (auto-read — these provisionally reduce the value; confirm each on the checklist for full weight):")
             lines.append("")
             for f in ai_findings:
                 lines.append(f"- **[{str(f.get('severity','')).upper()}]** {f.get('category','')}: {f.get('finding','')}")
@@ -200,7 +200,8 @@ def _diligence_section_html(d: Dict[str, Any]) -> str:
         return (f"<h3>{title} <span class='sub'>{sub}</span></h3>"
                 f"<ul class='flags'>{''.join(lis)}</ul>") if lis else ""
 
-    parts.append(_finding_list("Findings from the document", "(auto-read from the uploaded report — confirm each)",
+    parts.append(_finding_list("Findings from the document",
+                               "(auto-read — these provisionally reduce the value; confirm each on the checklist for full weight)",
                                ai_findings, "finding"))
     parts.append(_finding_list("Red flags", "(triggered by the deal's key facts)", red_flags, "label"))
 

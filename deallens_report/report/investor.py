@@ -160,8 +160,9 @@ def _diligence_lines(s: Dict[str, Any]) -> List[str]:
     if findings:
         order = {"high": 3, "medium": 2, "low": 1}
         fs = sorted(findings, key=lambda f: -order.get(str(f.get("severity", "")).lower(), 0))
-        lines.append("Reading the uploaded document, these points stood out to check — "
-                     "each is a lead to confirm, not a proven fact:")
+        lines.append("Reading the uploaded document, these points stood out to check — each is a "
+                     "lead to confirm, not a proven fact. They already nudge the value down a "
+                     "little; confirming them on the checklist applies their full weight:")
         # One line per finding (renderers wrap each as its own paragraph/bullet).
         for f in fs:
             lines.append(f"<em>{_esc(str(f.get('severity', '')).title())}</em> — "
