@@ -77,6 +77,14 @@ def test_empty_checklist_is_zero_percent():
     assert out["completion_pct"] == 0.0
 
 
+def test_flagged_items_count_toward_completion():
+    tmpl = get_template("general")
+    # Every item flagged (a reached conclusion) -> counts as addressed -> 100%.
+    payload = {"business_type": "general",
+               "items": [{"id": t.id, "status": "flagged", "risk_rating": "medium"} for t in tmpl]}
+    assert run(Checklist.from_dict(payload))["completion_pct"] == 100.0
+
+
 # ---------------------------------------------------------------------------
 # Red-flag detection from signals
 # ---------------------------------------------------------------------------

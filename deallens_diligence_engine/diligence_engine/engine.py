@@ -114,7 +114,9 @@ def run(checklist: Checklist) -> Dict[str, object]:
         is_applicable = status != ItemStatus.NA
         if is_applicable:
             applicable_weight += tmpl.weight
-            if status == ItemStatus.COMPLETE:
+            # An item is "addressed" once you've reached a conclusion on it — whether
+            # it checked out (complete) or raised a concern (flagged).
+            if status in (ItemStatus.COMPLETE, ItemStatus.FLAGGED):
                 complete_weight += tmpl.weight
 
         cat_totals.setdefault(cat, {"score_sum": 0.0, "rated": 0.0, "open": 0.0, "total": 0.0})

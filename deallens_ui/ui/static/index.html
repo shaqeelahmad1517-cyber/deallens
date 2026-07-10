@@ -298,6 +298,18 @@ async function openChecklist(id){
   const aiFindings=cl.ai_findings||[];
   window._ckId=id; window._ckBt=bt; window._ckItems=items.map(i=>i.id); window._ckAiFindings=aiFindings;
   const cats={}; items.forEach(it=>{(cats[it.category]=cats[it.category]||[]).push(it);});
+  // Pre-fill checklist items from AI findings: map each finding to the best item in
+  // its area (not already set by the user), suggesting Flagged + the AI's severity.
+  const prefill={};
+  aiFindings.forEach(f=>{
+    const cat=_findingCategory(f.category, f.finding);
+    const pool=(cats[cat]||[]).filter(it=>!existing[it.id] && !prefill[it.id]);
+    if(!pool.length) return;
+    // Prefer an item whose prompt shares a word with the finding; else the first.
+    const words=(f.finding||'').toLowerCase().split(/[^a-z]+/).filter(w=>w.length>4);
+    const pick=pool.find(it=>words.some(w=>it.prompt.toLowerCase().includes(w)))||pool[0];
+    prefill[pick.id]={status:'flagged', risk_rating:(f.severity||'medium'), notes:'AI: '+(f.finding||''), _ai:true};
+  });
   let body=`<h2>📋 Due diligence — ${d.target_name||'deal'}</h2>
     <div class="muted">Business type: <strong>${bt}</strong>. Work through each item as you investigate and flag concerns. The facts you enter below trigger automatic red flags that adjust the valuation. ★ = critical item.</div>`;
   if(aiFindings.length){
@@ -307,7 +319,7 @@ async function openChecklist(id){
       + aiFindings.map(f=>`<div style="padding:6px 9px;margin-bottom:5px;border-left:3px solid ${colors[f.severity]||'#999'};background:#fff;border-radius:5px;">
           <strong style="color:${colors[f.severity]||'#333'};text-transform:uppercase;font-size:11px;">${f.severity}</strong>
           <span style="font-size:11px;color:#888;"> · ${f.category}</span><br>${(f.finding||'').replace(/</g,'&lt;')}</div>`).join('')
-      + `<div class="muted" style="font-size:11px;">Related facts are pre-filled below where the report was clear. Verify, then set the matching items' status/risk.</div></div>`;
+      + `<div class="muted" style="font-size:11px;">The matching checklist items below are already pre-filled from these findings (marked <span style="color:#b9770e;">🧠 AI-suggested</span>) — review and adjust, then <strong>Save &amp; re-evaluate</strong> to confirm them (which applies their full weight and raises your completion %).</div></div>`;
   }
   body+=`
     <h3>Key facts <span class="sub" style="font-weight:400;color:#888;font-size:12px;">(drive automatic red flags — leave blank if unknown)</span></h3>
@@ -325,9 +337,10 @@ async function openChecklist(id){
   for(const cat of Object.keys(cats)){
     body+=`<h3>${cat}</h3>`;
     cats[cat].forEach(it=>{
-      const e=existing[it.id]||{};
-      body+=`<div class="card" style="padding:10px;margin-bottom:6px;">
-        <div>${it.prompt} ${it.critical?'<span title="critical" style="color:#C0392B">★</span>':''}</div>
+      const e=existing[it.id]||prefill[it.id]||{};
+      const aiTag=e._ai?` <span style="font-size:10px;color:#b9770e;background:#fff3e0;padding:1px 6px;border-radius:8px;">🧠 AI-suggested</span>`:'';
+      body+=`<div class="card" style="padding:10px;margin-bottom:6px;${e._ai?'border-color:#f0d8b8;':''}">
+        <div>${it.prompt} ${it.critical?'<span title="critical" style="color:#C0392B">★</span>':''}${aiTag}</div>
         <div class="grid3" style="margin-top:6px;">
           ${selectField('Status','ck_st_'+it.id,CK_STATUS,e.status||'not_started')}
           ${selectField('Risk','ck_rk_'+it.id,CK_RATING,e.risk_rating||'none')}
@@ -511,6 +524,17 @@ function _resolveSector(s){
   const k=String(s).trim().toLowerCase();
   if(META.sectors.includes(k)) return k;
   return (META.sector_aliases && META.sector_aliases[k]) || null;
+}
+// Map an AI finding to a diligence checklist category (mirrors the server logic).
+function _findingCategory(raw, text){
+  const s=((raw||'')+' '+(text||'')).toLowerCase();
+  if(/customer|client/.test(s)) return 'Customers';
+  if(/supplier|supply|vendor|commodity|operational|recall|product liability|manufactur|inventory|logistic/.test(s)) return 'Operations';
+  if(/litigation|lawsuit|legal|regulat|environmental|complian|governance|related party|antitrust/.test(s)) return 'Legal';
+  if(/owner|key person|management|personnel|employee|founder|labor|union/.test(s)) return 'People';
+  if(/\btax/.test(s)) return 'Tax';
+  if(/debt|covenant|leverage|goodwill|impair|intangible|material weakness|internal control|liquidit|refinanc|solvency|going concern|margin|volume|revenue|financial/.test(s)) return 'Financial';
+  return null;
 }
 
 async function extractPaste(){
