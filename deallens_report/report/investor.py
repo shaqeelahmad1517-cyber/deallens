@@ -121,22 +121,29 @@ def _sections(result: Dict[str, Any]) -> Dict[str, Any]:
         "overall_risk": d["diligence"].get("overall_risk_level"),
         "risk_profile": d["diligence"].get("risk_profile", []),
         "ai_findings": d["diligence"].get("ai_findings", []),
-        "cost_note": _cost_of_capital_note(d.get("effective_discount_rate")),
+        "cost_note": _cost_of_capital_note(d.get("effective_discount_rate"), d.get("cost_of_capital")),
     }
 
 
-def _cost_of_capital_note(edr):
-    """Plain-English explanation of the discount rate used."""
+def _cost_of_capital_note(edr, coc=None):
+    """Plain-English explanation of the discount rate used. Classifies by the BASE
+    cost of capital (the tier), then explains any diligence risk premium on top."""
     if not edr:
         return None
-    pct = edr * 100
-    if pct <= 12:
-        return (f"We discounted future earnings at about {pct:.0f}% a year — the rate suited to "
-                "a large, stable, publicly-traded company, whose earnings are relatively "
-                "predictable and so are discounted gently.")
-    return (f"We discounted future earnings at about {pct:.0f}% a year — the rate suited to a "
-            "smaller private business, which is riskier and harder to sell, so its future "
-            "earnings are discounted more heavily.")
+    eff = edr * 100
+    base = (coc or {}).get("discount_rate")
+    tier = (coc or {}).get("tier")
+    base_pct = base * 100 if base else eff
+    is_public = (tier == "public") if tier else base_pct <= 12
+    kind = ("a large, stable, publicly-traded company, whose earnings are relatively "
+            "predictable and so are discounted gently") if is_public else (
+            "a smaller private business, which is riskier and harder to sell, so its future "
+            "earnings are discounted more heavily")
+    note = f"We discounted future earnings at a base rate of about {base_pct:.0f}% a year — the rate suited to {kind}."
+    if eff - base_pct >= 0.4:
+        note += (f" Due-diligence risks raised the effective rate to about {eff:.0f}%, which is "
+                 "why the estimate is more conservative.")
+    return note
 
 
 def _diligence_lines(s: Dict[str, Any]) -> List[str]:

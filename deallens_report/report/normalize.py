@@ -38,6 +38,7 @@ def extract(result: Dict[str, Any]) -> Dict[str, Any]:
     # Diligence + comparables only present on orchestrator results.
     diligence = result.get("diligence") if is_orch else None
     comparables = result.get("comparables") if is_orch else None
+    cost_of_capital = (result.get("assumptions") or {}).get("cost_of_capital") if is_orch else None
 
     red_flags: List[Dict[str, Any]] = []
     completion: Optional[float] = None
@@ -71,5 +72,6 @@ def extract(result: Dict[str, Any]) -> Dict[str, Any]:
         },
         "red_flags": red_flags,
         "comparables": comparables,
+        "cost_of_capital": cost_of_capital,
         "disclaimer": val.get("disclaimer") or result.get("disclaimer", ""),
     }

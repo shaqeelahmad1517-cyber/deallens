@@ -282,11 +282,17 @@ def build_html(result: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         )
 
     edr = d.get("effective_discount_rate")
-    cost_note_html = (
-        f"<p class='note'>Income methods use an effective discount rate of "
-        f"{_pct(edr, 100)} — {'public-company' if edr and edr <= 0.12 else 'small-business'} "
-        f"cost of capital.</p>" if edr else ""
-    )
+    coc = d.get("cost_of_capital") or {}
+    base = coc.get("discount_rate")
+    is_public = (coc.get("tier") == "public") if coc.get("tier") else bool(base and base <= 0.12)
+    if edr:
+        base_txt = f"{_pct(base, 100)} base " if base else ""
+        prem = f", raised to an effective {_pct(edr, 100)} by due-diligence risk" if base and edr - base >= 0.004 else ""
+        cost_note_html = (f"<p class='note'>Income methods use a "
+                          f"{'public-company' if is_public else 'small-business'} cost of capital "
+                          f"({base_txt}{_pct(edr, 100) if not base else ''}{prem}).</p>")
+    else:
+        cost_note_html = ""
 
     completion = d["diligence"].get("completion_pct")
     completion_chip = (

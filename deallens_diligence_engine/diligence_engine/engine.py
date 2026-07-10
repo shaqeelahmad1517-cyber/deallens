@@ -24,11 +24,32 @@ _SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3}
 # weight. Kept modest so the AI's first-pass reading nudges, not dominates.
 _PROV_MULTIPLE_DISCOUNT = {"low": 0.01, "medium": 0.025, "high": 0.06}
 _PROV_RATE_PREMIUM = {"low": 0.0025, "medium": 0.0075, "high": 0.015}
-# Normalize AI finding categories onto the diligence/signal category vocabulary
-# so we can dedupe a finding against a confirmed signal in the same area.
-_CAT_NORMAL = {"debt": "Financial", "leverage": "Financial", "suppliers": "Operations",
-               "supplier": "Operations", "supply chain": "Operations", "governance": "Legal",
-               "management": "People", "product": "Operations", "environmental": "Legal"}
+# Map an AI finding onto the diligence/signal category vocabulary by keyword, so a
+# finding dedupes against a confirmed signal in the same area AND many findings
+# collapse into a few areas (rather than stacking one discount each). The AI's
+# category field is inconsistent (e.g. "Customers" vs "customer_concentration"),
+# so we match on the category + finding text together.
+_CAT_KEYWORDS = [
+    ("Customers", ("customer", "client")),
+    ("Operations", ("supplier", "supply chain", "vendor", "commodity", "operational",
+                    "recall", "product liability", "manufacturing", "inventory", "logistics")),
+    ("Legal", ("litigation", "lawsuit", "legal", "regulatory", "regulation", "environmental",
+               "compliance", "governance", "related party", "antitrust")),
+    ("People", ("owner", "key person", "key-person", "management", "personnel",
+                "employee", "founder", "labor", "union")),
+    ("Tax", ("tax",)),
+    ("Financial", ("debt", "covenant", "leverage", "goodwill", "impairment", "intangible",
+                   "material weakness", "internal control", "liquidity", "refinanc",
+                   "solvency", "going concern", "margin", "volume", "revenue", "financial")),
+]
+
+
+def _normalize_category(raw: str, text: str = "") -> str:
+    s = f"{raw} {text}".lower()
+    for cat, kws in _CAT_KEYWORDS:
+        if any(k in s for k in kws):
+            return cat
+    return raw.replace("_", " ").title() if raw else "General"
 
 
 def _provisional_flags(ai_findings, taken_categories):
@@ -41,12 +62,11 @@ def _provisional_flags(ai_findings, taken_categories):
         sev = str(f.get("severity", "medium")).lower()
         if sev not in _PROV_MULTIPLE_DISCOUNT:
             sev = "medium"
-        raw = str(f.get("category", "General")).strip()
-        cat = _CAT_NORMAL.get(raw.lower(), raw.title() if raw else "General")
+        text = str(f.get("finding") or f.get("label") or "").strip()
+        cat = _normalize_category(str(f.get("category", "")).strip(), text)
         if cat in taken_categories or cat in seen:
             continue                              # already counted (don't double-dip)
         seen.add(cat)
-        text = str(f.get("finding") or f.get("label") or "").strip()
         out.append({
             "label": "(from report, unconfirmed) " + (text[:160] or cat),
             "severity": sev, "category": cat, "source": "ai_finding",

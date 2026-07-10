@@ -112,9 +112,16 @@ def write_docx(result: Dict[str, Any], path: str, options: Optional[Dict[str, An
 
     edr = d.get("effective_discount_rate")
     if edr:
-        basis = "public-company" if edr <= 0.12 else "small-business"
-        note = doc.add_paragraph(
-            f"Income methods use an effective discount rate of {edr*100:.1f}% — {basis} cost of capital.")
+        coc = d.get("cost_of_capital") or {}
+        base = coc.get("discount_rate")
+        is_public = (coc.get("tier") == "public") if coc.get("tier") else bool(base and base <= 0.12)
+        basis = "public-company" if is_public else "small-business"
+        if base and edr - base >= 0.004:
+            txt = (f"Income methods use a {basis} cost of capital ({base*100:.1f}% base), "
+                   f"raised to an effective {edr*100:.1f}% by due-diligence risk.")
+        else:
+            txt = f"Income methods use a {basis} cost of capital of {edr*100:.1f}%."
+        note = doc.add_paragraph(txt)
         note.runs[0].italic = True
         note.runs[0].font.size = Pt(9)
 
