@@ -24,20 +24,26 @@ _DISCOUNT_RATE_PREMIUM = {
 }
 
 # Cap the cumulative effect so a long flag list can't zero out value.
-_MAX_MULTIPLE_DISCOUNT = 0.40
-_MAX_RATE_PREMIUM = 0.10
+_MAX_MULTIPLE_DISCOUNT = 0.35
+_MAX_RATE_PREMIUM = 0.05
 
 
 def assess(flags: List[RiskFlag]) -> Dict[str, object]:
-    """Aggregate flags into cumulative multiple discount and rate premium."""
-    md = 0.0
-    rp = 0.0
+    """Aggregate flags into a multiple discount and rate premium.
+
+    Uses DIMINISHING (multiplicative) aggregation, not a linear sum: each flag
+    reduces what's left rather than adding a fixed amount, so a long list of modest
+    risks compounds to a substantial-but-not-catastrophic discount instead of
+    linearly slamming into the cap. A single severe flag still bites hard.
+    """
+    retention = 1.0        # fraction of the multiple that survives
+    rate_retention = 1.0   # combine rate premiums with diminishing returns too
     detail = []
     for flag in flags or []:
         f_md = flag.multiple_discount if flag.multiple_discount is not None else _MULTIPLE_DISCOUNT[flag.severity]
         f_rp = flag.discount_rate_premium if flag.discount_rate_premium is not None else _DISCOUNT_RATE_PREMIUM[flag.severity]
-        md += f_md
-        rp += f_rp
+        retention *= (1.0 - max(0.0, min(f_md, 0.95)))
+        rate_retention *= (1.0 - max(0.0, min(f_rp / _MAX_RATE_PREMIUM, 0.95)))
         detail.append({
             "label": flag.label,
             "severity": flag.severity.value,
@@ -46,8 +52,8 @@ def assess(flags: List[RiskFlag]) -> Dict[str, object]:
             "discount_rate_premium": round(f_rp, 4),
         })
 
-    md = min(md, _MAX_MULTIPLE_DISCOUNT)
-    rp = min(rp, _MAX_RATE_PREMIUM)
+    md = min(1.0 - retention, _MAX_MULTIPLE_DISCOUNT)
+    rp = min(_MAX_RATE_PREMIUM * (1.0 - rate_retention), _MAX_RATE_PREMIUM)
     return {
         "multiple_discount": round(md, 4),
         "discount_rate_premium": round(rp, 4),
